@@ -32,13 +32,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/base_link_underpan.STL" />
+          filename="meshes/base_link_underpan.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+      
     </visual>
     <collision>
       <origin
@@ -46,7 +42,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/base_link_underpan.STL" />
+          filename="meshes/base_link_underpan.STL" />
       </geometry>
     </collision>
   </link>
@@ -72,13 +68,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_right_wheel.STL" />
+          filename="meshes/link_right_wheel.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -86,7 +78,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_right_wheel.STL" />
+          filename="meshes/link_right_wheel.STL" />
       </geometry>
     </collision>
   </link>
@@ -128,13 +120,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_left_wheel.STL" />
+          filename="meshes/link_left_wheel.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -142,7 +130,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_left_wheel.STL" />
+          filename="meshes/link_left_wheel.STL" />
       </geometry>
     </collision>
   </link>
@@ -184,13 +172,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_1_1.STL" />
+          filename="meshes/link_swivel_wheel_1_1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -198,7 +182,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_1_1.STL" />
+          filename="meshes/link_swivel_wheel_1_1.STL" />
       </geometry>
     </collision>
   </link>
@@ -237,13 +221,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_1_2.STL" />
+          filename="meshes/link_swivel_wheel_1_2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -251,7 +231,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_1_2.STL" />
+          filename="meshes/link_swivel_wheel_1_2.STL" />
       </geometry>
     </collision>
   </link>
@@ -290,13 +270,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_2_1.STL" />
+          filename="meshes/link_swivel_wheel_2_1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -304,7 +280,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_2_1.STL" />
+          filename="meshes/link_swivel_wheel_2_1.STL" />
       </geometry>
     </collision>
   </link>
@@ -343,13 +319,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_2_2.STL" />
+          filename="meshes/link_swivel_wheel_2_2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -357,7 +329,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_2_2.STL" />
+          filename="meshes/link_swivel_wheel_2_2.STL" />
       </geometry>
     </collision>
   </link>
@@ -396,13 +368,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_3_1.STL" />
+          filename="meshes/link_swivel_wheel_3_1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -410,7 +378,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_3_1.STL" />
+          filename="meshes/link_swivel_wheel_3_1.STL" />
       </geometry>
     </collision>
   </link>
@@ -449,13 +417,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_3_2.STL" />
+          filename="meshes/link_swivel_wheel_3_2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -463,7 +427,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_3_2.STL" />
+          filename="meshes/link_swivel_wheel_3_2.STL" />
       </geometry>
     </collision>
   </link>
@@ -502,13 +466,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_4_1.STL" />
+          filename="meshes/link_swivel_wheel_4_1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -516,7 +476,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_4_1.STL" />
+          filename="meshes/link_swivel_wheel_4_1.STL" />
       </geometry>
     </collision>
   </link>
@@ -555,13 +515,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_4_2.STL" />
+          filename="meshes/link_swivel_wheel_4_2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -569,7 +525,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/link_swivel_wheel_4_2.STL" />
+          filename="meshes/link_swivel_wheel_4_2.STL" />
       </geometry>
     </collision>
   </link>
@@ -620,13 +576,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/body_base_link.STL" />
+          filename="meshes/body_base_link.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -634,7 +586,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/body_base_link.STL" />
+          filename="meshes/body_base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -689,13 +641,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/platform_base_link.STL" />
+          filename="meshes/platform_base_link.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -703,7 +651,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/platform_base_link.STL" />
+          filename="meshes/platform_base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -747,13 +695,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/head_link1.STL" />
+          filename="meshes/head_link1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -761,7 +705,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/head_link1.STL" />
+          filename="meshes/head_link1.STL" />
       </geometry>
     </collision>
   </link>
@@ -805,13 +749,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/head_link2.STL" />
+          filename="meshes/head_link2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -819,7 +759,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/head_link2.STL" />
+          filename="meshes/head_link2.STL" />
       </geometry>
     </collision>
   </link>
@@ -863,13 +803,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/camera_link.STL" />
+          filename="meshes/camera_link.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -877,7 +813,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/camera_link.STL" />
+          filename="meshes/camera_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -916,13 +852,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_base_link1.STL" />
+          filename="meshes/l_base_link1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -930,7 +862,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_base_link1.STL" />
+          filename="meshes/l_base_link1.STL" />
       </geometry>
     </collision>
   </link>
@@ -969,13 +901,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/r_base_link1.STL" />
+          filename="meshes/r_base_link1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -983,7 +911,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/r_base_link1.STL" />
+          filename="meshes/r_base_link1.STL" />
       </geometry>
     </collision>
   </link>
@@ -1029,13 +957,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link1.STL" />
+          filename="meshes/r_link1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1043,7 +967,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link1.STL" />
+          filename="meshes/r_link1.STL" />
       </geometry>
     </collision>
   </link>
@@ -1087,13 +1011,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link2.STL" />
+          filename="meshes/r_link2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1101,7 +1021,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link2.STL" />
+          filename="meshes/r_link2.STL" />
       </geometry>
     </collision>
   </link>
@@ -1145,13 +1065,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link3.STL" />
+          filename="meshes/r_link3.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1159,7 +1075,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link3.STL" />
+          filename="meshes/r_link3.STL" />
       </geometry>
     </collision>
   </link>
@@ -1203,13 +1119,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link4.STL" />
+          filename="meshes/r_link4.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1217,7 +1129,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link4.STL" />
+          filename="meshes/r_link4.STL" />
       </geometry>
     </collision>
   </link>
@@ -1261,13 +1173,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link5.STL" />
+          filename="meshes/r_link5.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1275,7 +1183,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link5.STL" />
+          filename="meshes/r_link5.STL" />
       </geometry>
     </collision>
   </link>
@@ -1319,13 +1227,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link6.STL" />
+          filename="meshes/r_link6.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1333,7 +1237,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://RM65_B_V_right_description/meshes/r_link6.STL" />
+          filename="meshes/r_link6.STL" />
       </geometry>
     </collision>
   </link>
@@ -1356,51 +1260,7 @@
       velocity="3.925" />
   </joint>
 
-  
-  
-  
-  
-  
-   <link
-    name="r_hand_base_link">
-    <inertial>
-      <origin
-        xyz="-0.0077366 0.0020217 0.084945"
-        rpy="0 0 0" />
-      <mass
-        value="0.19137" />
-      <inertia
-        ixx="0.00045852"
-        ixy="-2.2207E-05"
-        ixz="-5.5348E-06"
-        iyy="0.00053494"
-        iyz="-2.5678E-06"
-        izz="0.00019084" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://overseas_65_b_v_description/meshes/r_hand_base_link.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.75294 0.75294 0.75294 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://overseas_65_b_v_description/meshes/r_hand_base_link.STL" />
-      </geometry>
-    </collision>
-  </link> 
+
   <joint
     name="r_hand_joint"
     type="fixed">
@@ -1410,7 +1270,7 @@
     <parent
       link="r_link6" />
     <child
-      link="r_hand_base_link" />
+      link="r_gripper_base_link" />
     <axis
       xyz="0 0 -1" />
     <limit
@@ -1420,33 +1280,242 @@
       velocity="0" />
   </joint>  
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  <link name="r_gripper_base_link">
+    <visual>
+        <geometry>
+          <mesh filename="visual/base_link.STL"  scale = "0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <geometry>
+            <mesh filename="visual/base_link.STL"  scale = "0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+        <inertial>
+          <mass value="0.83416" />
+            <origin xyz="0.0 0.0 0.0" />
+              <inertia ixx = "0.0013016" ixy = "-6.9374e-07" ixz = "5.9848e-07"
+                       iyx = "0.000000" iyy = "0.00049972" iyz = "2.0244E-07"
+                       izx = "0.000000" izy = "0.000000" izz = "0.001498" />
+       </inertial>
+    </link>
+  <joint name="r_gripper_finger1_joint" type="revolute">
+    <parent link="r_gripper_base_link"/>
+    <child link="r_gripper_finger1_knuckle_link"/>
+      <axis xyz="0 -1 0"/>
+      <origin rpy="0.0 0.0 3.14" xyz="-0.016 0 0.10586"/>
+      <limit lower="0.0" upper="0.6524" velocity="2.0" effort="1000"/>
+  </joint>
+  <joint name="r_gripper_finger2_joint" type="revolute">
+    <parent link="r_gripper_base_link"/>
+    <child link="r_gripper_finger2_knuckle_link"/>
+    <axis xyz="0 -1 0"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.016  0 0.10586 "/>
+    <limit lower="-3.14" upper="3.14" velocity="100.0" effort="1000"/>
+    <mimic joint="r_gripper_finger1_joint"/>
+  </joint>
+  <link name="r_gripper_finger1_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.011111" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "3.88172e-06" ixy = "-2.29456e-13" ixz = "8.33e-07"
+                         iyx = "0.000000" iyy = "1.92174e-06" iyz = "2.04435e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "4.32374e-06" />
+            </inertial>
+        </link>
+  <link name="r_gripper_finger2_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.011111" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "3.88172e-06" ixy = "-2.29456e-13" ixz = "8.33e-07"
+                         iyx = "0.000000" iyy = "1.92174e-06" iyz = "2.04435e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "4.32374e-06" />
+            </inertial>
+        </link>
+        <joint name="r_gripper_finger1_finger_joint" type="continuous">
+            <parent link="r_gripper_finger1_knuckle_link"/>
+            <child link="r_gripper_finger1_finger_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin xyz="0.0292080077784 0.0 -0.0227132622407" rpy="0 0 0" />
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="r_gripper_finger1_joint" multiplier="0.4563942" offset="0"/>
+        </joint>
+
+        <joint name="r_gripper_finger2_finger_joint" type="continuous">
+            <parent link="r_gripper_finger2_knuckle_link"/>
+            <child link="r_gripper_finger2_finger_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin xyz="0.0292080077784 0.0 -0.0227132622407" rpy="0 0 0" />
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="r_gripper_finger1_joint" multiplier="0.4563942" offset="0"/>
+        </joint>
+  <link name="r_gripper_finger1_finger_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0222871" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "8.72836e-06" ixy = "7.0843e-15" ixz = "-2.18833e-06"
+                         iyx = "-0.000002" iyy = "7.26157e-06" iyz = "7.6579e-15"
+                         izx = "0.000000" izy = "0.000000" izz = "3.3425e-06" />
+            </inertial>
+        </link>
+  <link name="r_gripper_finger2_finger_link">
+<visual>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0222871" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "8.72836e-06" ixy = "7.0843e-15" ixz = "-2.18833e-06"
+                         iyx = "-0.000002" iyy = "7.26157e-06" iyz = "7.6579e-15"
+                         izx = "0.000000" izy = "0.000000" izz = "3.3425e-06" />
+            </inertial>
+        </link>
+
+  <joint name="r_gripper_finger1_inner_knuckle_joint" type="continuous">
+    <parent link="r_gripper_base_link"/>
+    <child link="r_gripper_finger1_inner_knuckle_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin rpy="0.0 0.0 3.14" xyz="-0.016 0 0.10586"/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="r_gripper_finger1_joint" multiplier="1.49462955"  offset="0"/>
+ </joint>
+  <joint name="r_gripper_finger2_inner_knuckle_joint" type="continuous">
+    <parent link="r_gripper_base_link"/>
+    <child link="r_gripper_finger2_inner_knuckle_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.016 0 0.10586"/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="r_gripper_finger1_joint" multiplier="1.49462955"  offset="0"/>
+  </joint>
+     <link name="r_gripper_finger1_inner_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0318004" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "1.39848e-05" ixy = "-9.54763e-15" ixz = "-5.01422e-06"
+                         iyx = "0.000000" iyy = "1.04943e-05" iyz = "8.94585e-16"
+                         izx = "0.000000" izy = "0.000000" izz = "1.36183e-05" />
+            </inertial>
+      </link>
+<link name="r_gripper_finger2_inner_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0318004" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "1.39848e-05" ixy = "-9.54763e-15" ixz = "-5.01422e-06"
+                         iyx = "0.000000" iyy = "1.04943e-05" iyz = "8.94585e-16"
+                         izx = "0.000000" izy = "0.000000" izz = "1.36183e-05" />
+            </inertial>
+        </link>
+<joint name="r_gripper_finger1_finger_tip_joint" type="continuous">
+    <parent link="r_gripper_finger1_inner_knuckle_link"/>
+    <child link="r_gripper_finger1_finger_tip_link"/>
+            <axis xyz="0 1 0"/>
+            <origin xyz="0.0394969463769 0.0 0.0382752038125 " rpy="0.0 0.0 0.0"/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="r_gripper_finger1_joint" multiplier="1.49462955"/>
+        </joint>
+  <joint name="r_gripper_finger2_finger_tip_joint" type="continuous">
+    <parent link="r_gripper_finger2_inner_knuckle_link"/>
+    <child link="r_gripper_finger2_finger_tip_link"/>
+            <axis xyz="0 1 0"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0394969463769  0.0 0.0382752038125  "/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="1.49462955"/>
+  </joint>
+  <link name="r_gripper_finger1_finger_tip_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0124305" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "2.84217e-06" ixy = "-2.48048e-15" ixz = "8.24539e-07"
+                         iyx = "0.000000" iyy = "3.03961e-06" iyz = "2.16427e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "1.11815e-06" />
+            </inertial>
+        </link> 
+  <link name="r_gripper_finger2_finger_tip_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0124305" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "2.84217e-06" ixy = "-2.48048e-15" ixz = "8.24539e-07"
+                         iyx = "0.000000" iyy = "3.03961e-06" iyz = "2.16427e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "1.11815e-06" />
+            </inertial>
+        </link> 
   
  
   <link
@@ -1471,13 +1540,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link1.STL" />
+          filename="meshes/l_link1.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1485,7 +1550,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link1.STL" />
+          filename="meshes/l_link1.STL" />
       </geometry>
     </collision>
   </link>
@@ -1529,13 +1594,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link2.STL" />
+          filename="meshes/l_link2.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1543,7 +1604,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link2.STL" />
+          filename="meshes/l_link2.STL" />
       </geometry>
     </collision>
   </link>
@@ -1587,13 +1648,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link3.STL" />
+          filename="meshes/l_link3.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1601,7 +1658,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link3.STL" />
+          filename="meshes/l_link3.STL" />
       </geometry>
     </collision>
   </link>
@@ -1645,13 +1702,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link4.STL" />
+          filename="meshes/l_link4.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1659,7 +1712,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link4.STL" />
+          filename="meshes/l_link4.STL" />
       </geometry>
     </collision>
   </link>
@@ -1703,13 +1756,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link5.STL" />
+          filename="meshes/l_link5.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1717,7 +1766,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link5.STL" />
+          filename="meshes/l_link5.STL" />
       </geometry>
     </collision>
   </link>
@@ -1761,13 +1810,9 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link6.STL" />
+          filename="meshes/l_link6.STL" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.79216 0.81961 0.93333 1" />
-      </material>
+
     </visual>
     <collision>
       <origin
@@ -1775,7 +1820,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_link6.STL" />
+          filename="meshes/l_link6.STL" />
       </geometry>
     </collision>
   </link>
@@ -1798,69 +1843,6 @@
       velocity="3.925" />
   </joint>
 
-  
-  
-
-
-
-
-  <link
-    name="l_hand_base_link">
-    <inertial>
-      <origin
-        xyz="-0.0032674 -0.0073505 0.084948"
-        rpy="0 0 0" />
-      <mass
-        value="0.19134" />
-      <inertia
-        ixx="0.00048203"
-        ixy="-4.1698E-05"
-        ixz="-5.5358E-06"
-        iyy="0.00051126"
-        iyz="-2.6069E-06"
-        izz="0.00019085" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_hand_base_link.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.75294 0.75294 0.75294 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://overseas_65_b_v_description/meshes/l_hand_base_link.STL" />
-      </geometry>
-    </collision>
-  </link>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
   <joint
@@ -1868,11 +1850,11 @@
     type="fixed">
     <origin
       xyz="0 0 0.0445"
-      rpy="0 3.1415 3.1415" />
+      rpy="3.14159 0 0" />
     <parent
       link="l_link6" />
     <child
-      link="l_hand_base_link" />
+      link="l_gripper_base_link" />
     <axis
       xyz="0 0 0" />
     <limit
@@ -1881,7 +1863,243 @@
       effort="0"
       velocity="0" />
   </joint>  
+
+  <link name="l_gripper_base_link">
+    <visual>
+        <geometry>
+          <mesh filename="visual/base_link.STL"  scale = "0.001 0.001 0.001"/>
+        </geometry>
+    </visual>
+    <collision>
+        <geometry>
+            <mesh filename="visual/base_link.STL"  scale = "0.001 0.001 0.001"/>
+        </geometry>
+    </collision>
+        <inertial>
+          <mass value="0.83416" />
+            <origin xyz="0.0 0.0 0.0" />
+              <inertia ixx = "0.0013016" ixy = "-6.9374e-07" ixz = "5.9848e-07"
+                       iyx = "0.000000" iyy = "0.00049972" iyz = "2.0244E-07"
+                       izx = "0.000000" izy = "0.000000" izz = "0.001498" />
+       </inertial>
+    </link>
+  <joint name="l_gripper_finger1_joint" type="revolute">
+    <parent link="l_gripper_base_link"/>
+    <child link="l_gripper_finger1_knuckle_link"/>
+      <axis xyz="0 -1 0"/>
+      <origin rpy="0.0 0.0 3.14" xyz="-0.016 0 0.10586"/>
+      <limit lower="0.0" upper="0.6524" velocity="2.0" effort="1000"/>
+  </joint>
+  <joint name="l_gripper_finger2_joint" type="revolute">
+    <parent link="l_gripper_base_link"/>
+    <child link="l_gripper_finger2_knuckle_link"/>
+    <axis xyz="0 -1 0"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.016  0 0.10586 "/>
+    <limit lower="-3.14" upper="3.14" velocity="100.0" effort="1000"/>
+    <mimic joint="l_gripper_finger1_joint"/>
+  </joint>
+  <link name="l_gripper_finger1_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.011111" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "3.88172e-06" ixy = "-2.29456e-13" ixz = "8.33e-07"
+                         iyx = "0.000000" iyy = "1.92174e-06" iyz = "2.04435e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "4.32374e-06" />
+            </inertial>
+        </link>
+  <link name="l_gripper_finger2_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/crank_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.011111" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "3.88172e-06" ixy = "-2.29456e-13" ixz = "8.33e-07"
+                         iyx = "0.000000" iyy = "1.92174e-06" iyz = "2.04435e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "4.32374e-06" />
+            </inertial>
+        </link>
+        <joint name="l_gripper_finger1_finger_joint" type="continuous">
+            <parent link="l_gripper_finger1_knuckle_link"/>
+            <child link="l_gripper_finger1_finger_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin xyz="0.0292080077784 0.0 -0.0227132622407" rpy="0 0 0" />
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="0.4563942" offset="0"/>
+        </joint>
+
+        <joint name="l_gripper_finger2_finger_joint" type="continuous">
+            <parent link="l_gripper_finger2_knuckle_link"/>
+            <child link="l_gripper_finger2_finger_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin xyz="0.0292080077784 0.0 -0.0227132622407" rpy="0 0 0" />
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="0.4563942" offset="0"/>
+        </joint>
+  <link name="l_gripper_finger1_finger_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0222871" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "8.72836e-06" ixy = "7.0843e-15" ixz = "-2.18833e-06"
+                         iyx = "-0.000002" iyy = "7.26157e-06" iyz = "7.6579e-15"
+                         izx = "0.000000" izy = "0.000000" izz = "3.3425e-06" />
+            </inertial>
+        </link>
+  <link name="l_gripper_finger2_finger_link">
+<visual>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/rod_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0222871" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "8.72836e-06" ixy = "7.0843e-15" ixz = "-2.18833e-06"
+                         iyx = "-0.000002" iyy = "7.26157e-06" iyz = "7.6579e-15"
+                         izx = "0.000000" izy = "0.000000" izz = "3.3425e-06" />
+            </inertial>
+        </link>
+
+  <joint name="l_gripper_finger1_inner_knuckle_joint" type="continuous">
+    <parent link="l_gripper_base_link"/>
+    <child link="l_gripper_finger1_inner_knuckle_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin rpy="0.0 0.0 3.14" xyz="-0.016 0 0.10586"/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="1.49462955"  offset="0"/>
+ </joint>
+  <joint name="l_gripper_finger2_inner_knuckle_joint" type="continuous">
+    <parent link="l_gripper_base_link"/>
+    <child link="l_gripper_finger2_inner_knuckle_link"/>
+            <axis xyz="0 -1 0"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.016 0 0.10586"/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="1.49462955"  offset="0"/>
+  </joint>
+     <link name="l_gripper_finger1_inner_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0318004" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "1.39848e-05" ixy = "-9.54763e-15" ixz = "-5.01422e-06"
+                         iyx = "0.000000" iyy = "1.04943e-05" iyz = "8.94585e-16"
+                         izx = "0.000000" izy = "0.000000" izz = "1.36183e-05" />
+            </inertial>
+      </link>
+<link name="l_gripper_finger2_inner_knuckle_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/proximal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0318004" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "1.39848e-05" ixy = "-9.54763e-15" ixz = "-5.01422e-06"
+                         iyx = "0.000000" iyy = "1.04943e-05" iyz = "8.94585e-16"
+                         izx = "0.000000" izy = "0.000000" izz = "1.36183e-05" />
+            </inertial>
+        </link>
+<joint name="l_gripper_finger1_finger_tip_joint" type="continuous">
+    <parent link="l_gripper_finger1_inner_knuckle_link"/>
+    <child link="l_gripper_finger1_finger_tip_link"/>
+            <axis xyz="0 1 0"/>
+            <origin xyz="0.0394969463769 0.0 0.0382752038125 " rpy="0.0 0.0 0.0"/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="1.49462955"/>
+        </joint>
+  <joint name="l_gripper_finger2_finger_tip_joint" type="continuous">
+    <parent link="l_gripper_finger2_inner_knuckle_link"/>
+    <child link="l_gripper_finger2_finger_tip_link"/>
+            <axis xyz="0 1 0"/>
+            <origin rpy="0.0 0.0 0.0" xyz="0.0394969463769  0.0 0.0382752038125  "/>
+            <limit lower="-3.14" upper="3.14" velocity="100.0" effort="0.1"/>
+            <mimic joint="l_gripper_finger1_joint" multiplier="1.49462955"/>
+  </joint>
+  <link name="l_gripper_finger1_finger_tip_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0124305" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "2.84217e-06" ixy = "-2.48048e-15" ixz = "8.24539e-07"
+                         iyx = "0.000000" iyy = "3.03961e-06" iyz = "2.16427e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "1.11815e-06" />
+            </inertial>
+        </link> 
+  <link name="l_gripper_finger2_finger_tip_link">
+            <visual>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="visual/distal_phalanx_Link.STL"  scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="0.0124305" />
+                <origin xyz="0.0 0.0 0.0" />
+                <inertia ixx = "2.84217e-06" ixy = "-2.48048e-15" ixz = "8.24539e-07"
+                         iyx = "0.000000" iyy = "3.03961e-06" iyz = "2.16427e-13"
+                         izx = "0.000000" izy = "0.000000" izz = "1.11815e-06" />
+            </inertial>
+        </link> 
     
-  
-  
+
 </robot>
