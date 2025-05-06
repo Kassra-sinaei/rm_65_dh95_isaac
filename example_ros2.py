@@ -124,8 +124,8 @@ def main():
     joint_state_msg.position = r_angles.tolist() + l_angles.tolist()
     # joint_state_msg.velocity = [0.0 for _ in range(12)] 
     # joint_state_msg.effort = [0.0 for _ in range(12)]
-    velocity_msgs.linear.x = 0.5
-    velocity_msgs.angular.z = 2.0
+    velocity_msgs.linear.x = 1.0
+    velocity_msgs.angular.z = 0.0
 
     # Publish the JointState message
     try:
