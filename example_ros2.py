@@ -2,6 +2,7 @@
 
 # import threading
 import numpy as np
+from array import array
 import time
 import math
 
@@ -9,7 +10,21 @@ import rclpy
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Pose
+import pinocchio
+from pathlib import Path
+from sys import argv
 
+# urdf_filename = "./a1/urdf/a1.urdf"
+urdf_filename = "./urdf/overseas_65_corrected.urdf"
+model = pinocchio.buildModelFromUrdf(urdf_filename)
+print("model name: " + model.name)
+# Create data required by the algorithms
+data = model.createData()
+ 
+# Sample a random configuration
+q = pinocchio.randomConfiguration(model)
+print(f"q: {q.T}")
+breakpoint()
 r_theta = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 l_theta = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
@@ -116,15 +131,21 @@ def main():
     joint_state_msg = JointState()
     velocity_msgs = Twist()
     joint_state_msg.name = ['r_joint1', 'r_joint2', 'r_joint3', 'r_joint4', 'r_joint5', 'r_joint6',
-                            'l_joint1', 'l_joint2', 'l_joint3', 'l_joint4', 'l_joint5', 'l_joint6']
+                            'l_joint1', 'l_joint2', 'l_joint3', 'l_joint4', 'l_joint5', 'l_joint6', 'l_finger_joint', 'r_finger_joint', 'platform_joint']
     goal_rot = np.eye(3)
     goal_pos = np.array([0, 0, 0.4])
     r_angles = r_arm_solver.geo_inverse_kinematics(goal_pos, goal_rot)
     l_angles = l_arm_solver.geo_inverse_kinematics(goal_pos, goal_rot)
-    joint_state_msg.position = r_angles.tolist() + l_angles.tolist()
+    # joint_state_msg.position = r_angles.tolist() + l_angles.tolist()
     # joint_state_msg.velocity = [0.0 for _ in range(12)] 
     # joint_state_msg.effort = [0.0 for _ in range(12)]
-    velocity_msgs.linear.x = 1.0
+    joint_state_msg.position = [0.0 for _ in range(15)] 
+    joint_state_msg.position[0:6]  = array('d', [0, 1.75, 0.6, -1.5, 0, 0])
+    joint_state_msg.position[6:12] = array('d', [0, -1.75, -0.6, 1.5, 0, 0])
+    joint_state_msg.position[12] = 0.785398
+    joint_state_msg.position[13] = 0.785398
+    joint_state_msg.position[14] = 0.4
+    velocity_msgs.linear.x = 0.0
     velocity_msgs.angular.z = 0.0
 
     # Publish the JointState message
