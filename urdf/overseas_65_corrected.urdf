@@ -40,7 +40,7 @@
       </geometry>
     </collision>
   </link>
-  <!-- <link
+  <link
     name="link_right_wheel">
     <inertial>
       <origin
@@ -535,7 +535,7 @@
       link="link_swivel_wheel_4_2" />
     <axis
       xyz="1 0 0" />
-  </joint> -->
+  </joint>
 
 
   <link

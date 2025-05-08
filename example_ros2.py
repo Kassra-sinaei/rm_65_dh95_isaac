@@ -24,6 +24,14 @@ data = model.createData()
 # Sample a random configuration
 q = pinocchio.randomConfiguration(model)
 print(f"q: {q.T}")
+# Perform the forward kinematics over the kinematic tree
+pinocchio.forwardKinematics(model, data, q)
+ 
+# Print out the placement of each joint of the kinematic tree
+for name, oMi in zip(model.names, data.oMi):
+    print("{:<24} : {: .2f} {: .2f} {: .2f}".format(name, *oMi.translation.T.flat))
+
+    
 breakpoint()
 r_theta = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 l_theta = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
