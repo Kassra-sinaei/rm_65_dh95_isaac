@@ -3,8 +3,11 @@ import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
 import numpy as np
 import time
+from math import atan2
 
-import matplotlib.pylab as plt; plt.ion()
+import matplotlib.pylab as plt
+
+import rclpy.logging; plt.ion()
 
 
 from pink import solve_ik, Configuration
@@ -20,17 +23,18 @@ from tf2_msgs.msg import TFMessage
 
 
 class FSM(Node):
-    def __init__(self):
+    def __init__(self, type, side, width):
         # ROS2 Node Setup
         super().__init__('fsm')
-        self.joint_state_sub = self.create_subscription(JointState, '/isaac_sim/joint_states', self.jointStateCallback, 10)
-        self.base_pose_sub = self.create_subscription(TFMessage, '/tf', self.basePoseCallback, 10)
-        self.handle_sub = self.create_subscription(TFMessage, '/isaac_sim/door_handle', self.basePoseCallback, 10)
-        self.joint_state_pub = self.create_publisher(JointState, '/isaac_sim/joint_command', 10)
-        self.base_pub = self.create_publisher(Twist, '/isaac_sim/cmd_vel', 10)
+        self.joint_state_sub = self.create_subscription(JointState, '/isaac_sim/joint_states', self.jointStateCallback, 2)
+        self.base_pose_sub = self.create_subscription(TFMessage, '/tf', self.basePoseCallback, 2)
+        self.handle_sub = self.create_subscription(TFMessage, '/isaac_sim/door_handle', self.handleCallback, 2)
+        self.joint_state_pub = self.create_publisher(JointState, '/isaac_sim/joint_command', 2)
+        self.base_pub = self.create_publisher(Twist, '/isaac_sim/cmd_vel', 2)
         # Set robot State
         self.state = "initial"
         self.base_pose = np.array([0.0, 0.0, 0.0])      # x y psi
+        self.handle_pose = np.zeros(7)    # [x y z] [x y z w]
         self.dual_arm_config = np.zeros(13)     # platform[1] r_arm[6] l_arm[6]
         
         # urdf_path = os.path.join(get_package_share_directory('door_fsm'), '../../../..','src', 'door_fsm','description', 'rm_model.urdf')
@@ -59,7 +63,7 @@ class FSM(Node):
         self.l_gripper = self.model.getFrameId('l_gripper_frame')
         self.base = self.model.getFrameId('base_link_underpan')
         joint_names = [self.robot.model.names[i] for i in range(self.robot.model.njoints)]
-        print("Joint names:", joint_names)
+        # print("Joint names:", joint_names)
 
         # Setup Pink
         self.dt = 1e-1
@@ -68,23 +72,32 @@ class FSM(Node):
             'r_gripper':FrameTask('r_gripper_frame', position_cost=1.0, orientation_cost=1.0),
             'l_gripper':FrameTask('l_gripper_frame', position_cost=1.0, orientation_cost=1.0)
         }
-
+        self.joint_names = ['platform_joint',
+                            'r_joint1', 'r_joint2', 'r_joint3', 'r_joint4', 'r_joint5', 'r_joint6'
+                            'l_joint1', 'l_joint2', 'l_joint3', 'l_joint4', 'l_joint5', 'l_joint6']
         # Setup Crocoddyl
-        self.model = crocoddyl.ActionModelUnicycle()
-        self.model.dt = 1e-2
-        self.model.costWeights = np.array([1, 1 ])
-        self.data  = self.model.createData()
+        self.base_model = crocoddyl.ActionModelUnicycle()
+        self.base_model.dt = 0.1
+        self.base_model.costWeights = np.matrix([5, 20]).T
+        self.data  = self.base_model.createData()
 
-    def approach(self):
-
+        # Door Parameters
+        self.door_type = type     # push or pull
+        self.handle_side = side   # left or right
+        self.door_width = width   # width of the door
+        if self.handle_side == "left":
+            self.handle_offset = np.array([1.2, 0.15])
+        else:
+            self.handle_offset = np.array([1.2, -0.15])
 
     def unicycleController(self, start, goal, T):
-        e = start - goal
+        e = goal - start
         e.reshape(3, 1)
-        T = int(T / self.model.dt)
-        problem = crocoddyl.ShootingProblem(e, [ self.model ] * T, self.model)
+        T = int(T / self.base_model.dt)
+        problem = crocoddyl.ShootingProblem(e, [ self.base_model ] * T, self.base_model)
         ddp = crocoddyl.SolverDDP(problem)
         if ddp.solve():
+            print(e)
             return ddp.us[0]
         else:
             return None
@@ -102,9 +115,29 @@ class FSM(Node):
         return self.configuration.q
     
     def basePoseCallback(self, msg):
+        w = msg.transforms[0].transform.rotation.w
+        x = msg.transforms[0].transform.rotation.x
+        y = msg.transforms[0].transform.rotation.y
+        z = msg.transforms[0].transform.rotation.z
+        psi = atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z)) 
         self.base_pose = np.array([msg.transforms[0].transform.translation.x,
                                    msg.transforms[0].transform.translation.y,
-                                   msg.transforms[0].transform.rotation.z])
+                                   psi])
+        print(psi)
+        if self.state == "initial" and np.linalg.norm(self.base_pose[0:2] - (self.handle_pose[0:2] - self.handle_offset)) < 0.1 and abs(psi - np.pi) < 0.1:
+            self.state = "approach"
+        # rclpy.logging.get_logger('fsm').info("Base Pose updated ...")
+        pass
+
+    def handleCallback(self, msg):
+        self.handle_pose = np.array([msg.transforms[0].transform.translation.x,
+                                      msg.transforms[0].transform.translation.y,
+                                      msg.transforms[0].transform.translation.z,
+                                      msg.transforms[0].transform.rotation.x,
+                                      msg.transforms[0].transform.rotation.y,
+                                      msg.transforms[0].transform.rotation.z,
+                                      msg.transforms[0].transform.rotation.w])
+        # print("Handle Pose updated ...")
         pass
 
     def jointStateCallback(self, msg):
@@ -121,8 +154,53 @@ class FSM(Node):
         self.dual_arm_config[10] = msg.position[17]
         self.dual_arm_config[11] = msg.position[20]
         self.dual_arm_config[12] = msg.position[19]
+        # print("Joint State updated ...")
         pass
 
+    def approach(self):
+        goal = np.zeros(3)
+        goal[0:2] = self.handle_pose[0:2] - self.handle_offset
+        goal[2] = atan2(2.0 * (self.handle_pose[6] * self.handle_pose[5] + self.handle_pose[3] * self.handle_pose[4]), 
+                        1.0 - 2.0 * (self.handle_pose[4] * self.handle_pose[4] + self.handle_pose[5] * self.handle_pose[5]))
+        if self.state == "initial":
+            try:
+                res = self.unicycleController(self.base_pose, goal, 10)
+                msg = Twist()
+                msg.linear.x = res[0]
+                msg.angular.z = res[1]
+                self.base_pub.publish(msg)
+                # rclpy.logging.get_logger('fsm').info("Publishing base velocity ...")
+            except Exception as e:
+                rclpy.logging.get_logger('fsm').error("Error in unicycleController")
+
+
+    def grasp(self):
+        if self.state == "approach":
+            if self.door_type == "push":
+                local_handle = np.array([self.handle_pose[0] - self.base_pose[0], 
+                                         self.handle_pose[1] - self.base_pose[1], 
+                                         self.handle_pose[2]])
+                if self.handle_side == "left":
+                    r_goal_p = local_handle
+                    r_goal_q = pin.Quaternion(self.handle_pose[6], self.handle_pose[3], self.handle_pose[4], self.handle_pose[5]).normalized().matrix()
+                    l_goal_p = np.array([0.2, 0.2, 1.5])
+                    l_goal_q = pin.Quaternion(1, 0, 0, 0).normalized().matrix()
+                else:
+                    l_goal_p = local_handle
+                    l_goal_q = pin.Quaternion(self.handle_pose[6], self.handle_pose[3], self.handle_pose[4], self.handle_pose[5]).normalized().matrix()
+                    r_goal_p = np.array([0.2, -0.2, 1.5])
+                    r_goal_q = pin.Quaternion(1, 0, 0, 0).normalized().matrix()
+                q = self.pinkIK(r_goal_p, r_goal_q, l_goal_p, l_goal_q)
+                msg = JointState()
+                msg.name = self.joint_names
+                msg.position = [q[0], 
+                                q[9], q[10], q[11], q[12], q[13], q[14],
+                                q[3], q[4], q[5], q[6], q[7], q[8]]
+                self.joint_state_pub.publish(msg)
+                print("publishing joint state ...")
+                                
+        else:
+            print("Not in approach state, cannot grasp ...")
 
 def test(fsm):
     r_goal_p = np.array([-0.4, -0.4, 1.0])
@@ -153,6 +231,21 @@ def test(fsm):
 
 if __name__ == "__main__":
     rclpy.init()
-    fsm = FSM()
+    fsm = FSM('push', 'left', 0.9)
     # test(fsm)
+    time.sleep(2)
+    rclpy.spin_once(fsm)
+    rclpy.spin_once(fsm)
+    while rclpy.ok():
+        rclpy.spin_once(fsm)
+        time.sleep(0.05)
+        if fsm.state == "initial":
+            fsm.approach()
+        # elif fsm.state == "approach":
+        #     fsm.grasp()
+        else:
+            print("Exiting Program  ...")
+            fsm.destroy_node()
+            rclpy.shutdown()
+            break     
     
