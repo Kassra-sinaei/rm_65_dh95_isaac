@@ -22,6 +22,8 @@ class RealmanControlNode(Node):
         # URDF & Pinocchio setup
         self.URDFPATH = "./urdf/overseas_65_corrected.urdf"
         self.MESH_DIR = "./urdf"
+        self.INIT_ARM = [0, -1.75, -0.6, 1.5, 0, 0, 0, 1.75, 0.6, -1.5, 0, 0]   # left arm and right arm
+        self.JOINT_MSG_NAME = [f"l_joint{i}" for i in range(1, 7)] + [f"r_joint{i}" for i in range(1, 7)] + ["l_finger_joint", "r_finger_joint", "platform_joint"]
         self.model, self.collision_model, self.visual_model = pinocchio.buildModelsFromUrdf(
             self.URDFPATH, self.MESH_DIR, pinocchio.JointModelFreeFlyer()
         )
@@ -37,9 +39,9 @@ class RealmanControlNode(Node):
         pinocchio.forwardKinematics(self.model, self.data, self.q)
 
 
-        # state buffers
-        self.pin_q = np.zeros(22) # x, y, z, rx, ry, rz, rw, platform, head 2, l 6, r 6.
-
+        # state buffers x, y, z, rx, ry, rz, rw, platform, head 2, l 6, r 6.
+        self.pin_q = np.zeros(22) 
+        self.door_handle_pose = np.zeros(7)  # [x, y, z, rx, ry, rz, rw]
 
         # subscriptions
         self.create_subscription(
@@ -49,6 +51,11 @@ class RealmanControlNode(Node):
         self.create_subscription(
             TFMessage, '/tf',
             self.basePoseCallback, 10
+        )
+
+        self.create_subscription(
+            TFMessage, '/isaac_sim/door_handle',
+            self.doorHandleCallback, 10
         )
 
         # publishers
@@ -74,26 +81,35 @@ class RealmanControlNode(Node):
                 trans.x, trans.y, trans.z,
                 rot.x, rot.y, rot.z, rot.w
             ])
+    def doorHandleCallback(self, msg):
+        for t in msg.transforms:
+            trans = t.transform.translation
+            rot   = t.transform.rotation
+            self.door_handle_pose = np.array([
+                trans.x, trans.y, trans.z,
+                rot.x, rot.y, rot.z, rot.w
+            ])
+
+
+    def initPose(self, joint_state_msg, velocity_msgs):
+        joint_state_msg.position[0:12] = array('d', self.INIT_ARM)
+        joint_state_msg.position[12] = 0
+        joint_state_msg.position[13] = 0
+        joint_state_msg.position[14] = 0.4
+
+        velocity_msgs.linear.x   = 0.0
+        velocity_msgs.angular.z  = 0.0
+
 
     def main(self):
         # Create a JointState message
         joint_state_msg = JointState()
         velocity_msgs   = Twist()
-        joint_state_msg.name  = (
-            [f"l_joint{i}" for i in range(1, 7)] +
-            [f"r_joint{i}" for i in range(1, 7)] +
-            ["l_finger_joint", "r_finger_joint", "platform_joint"]
-        )
+        joint_state_msg.name  = self.JOINT_MSG_NAME
 
         joint_state_msg.position = [0.0]*15
-        joint_state_msg.position[0:6] = array('d', [0, -1.75, -0.6, 1.5, 0, 0])
-        joint_state_msg.position[6:12]  = array('d', [0, 1.75, 0.6, -1.5, 0, 0])
-        joint_state_msg.position[12] = 0.785398
-        joint_state_msg.position[13] = 0.785398
-        joint_state_msg.position[14] = 0.4
+        self.initPose(joint_state_msg, velocity_msgs)
 
-        velocity_msgs.linear.x   = 1.0
-        velocity_msgs.angular.z  = 0.0
 
         try:
             while rclpy.ok():
@@ -103,6 +119,7 @@ class RealmanControlNode(Node):
                 time.sleep(0.05)
                 rclpy.spin_once(self)
                 self.viz.display(self.pin_q)
+                print(self.door_handle_pose)
         except KeyboardInterrupt:
             print("\nShutting down publisher...")
         finally:
