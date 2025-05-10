@@ -21,6 +21,7 @@ from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
 from tf2_msgs.msg import TFMessage
 
+from planner import Planner
 
 class FSM(Node):
     def __init__(self, type, side, width):
@@ -80,7 +81,7 @@ class FSM(Node):
         # Setup Crocoddyl
         self.base_model = crocoddyl.ActionModelUnicycle()
         self.base_model.dt = 0.1
-        self.base_model.costWeights = np.matrix([5, 4]).T
+        self.base_model.costWeights = np.matrix([10, 9]).T
         self.base_model.stateWeights = np.matrix([1, 1, 5]).T
         self.data  = self.base_model.createData()
 
@@ -100,7 +101,7 @@ class FSM(Node):
         problem = crocoddyl.ShootingProblem(e, [ self.base_model ] * T, self.base_model)
         ddp = crocoddyl.SolverDDP(problem)
         if ddp.solve():
-            print(e)
+            # print(e)
             return ddp.us[0]
         else:
             return None
@@ -126,10 +127,11 @@ class FSM(Node):
         self.base_pose = np.array([msg.transforms[0].transform.translation.x,
                                    msg.transforms[0].transform.translation.y,
                                    psi])
-        print(psi)
-        if self.state == "initial" and np.linalg.norm(self.base_pose[0:2] - (self.handle_pose[0:2] - self.handle_offset)) < 0.1 and abs(psi) < 0.1:
+        # print(psi)
+        if self.state == "initial" and np.linalg.norm(self.base_pose[0:2] - (self.handle_pose[0:2] - self.handle_offset)) < 0.15 and abs(psi) < 0.1:
             self.state = "approach"
-        # rclpy.logging.get_logger('fsm').info("Base Pose updated ...")
+        else:
+            self.state = "initial"
         pass
 
     def handleCallback(self, msg):
