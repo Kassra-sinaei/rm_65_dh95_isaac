@@ -1,50 +1,32 @@
 #!/usr/bin/env python3.10
-
+import rclpy
+from rclpy.node import Node
 import numpy as np
 from numpy.linalg import norm, solve
 from array import array
-import time
-import math
-import threading
-import rclpy
-from rclpy.node import Node
+
+
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
 from tf2_msgs.msg import TFMessage
 
-import pinocchio
-from pinocchio.visualize import MeshcatVisualizer
+from config import Config
+from realmanState import RealmanState
+from controller import Controller
 
 class RealmanControlNode(Node):
     def __init__(self):
         super().__init__('RealmanControlNode')
 
-        # URDF & Pinocchio setup
-        self.URDFPATH = "./urdf/overseas_65_corrected.urdf"
-        self.MESH_DIR = "./urdf"
-        self.INIT_ARM = [0, -1.75, -0.6, 1.5, 0, 0, 0, 1.75, 0.6, -1.5, 0, 0]   # left arm and right arm
-        self.JOINT_MSG_NAME = [f"l_joint{i}" for i in range(1, 7)] + [f"r_joint{i}" for i in range(1, 7)] + ["l_finger_joint", "r_finger_joint", "platform_joint"]
-        self.model, self.collision_model, self.visual_model = pinocchio.buildModelsFromUrdf(
-            self.URDFPATH, self.MESH_DIR, pinocchio.JointModelFreeFlyer()
-        )
-        self.data = self.model.createData()
-        
-        # initial config & visualizer
-        self.q = pinocchio.neutral(self.model)
-        self.viz = MeshcatVisualizer(self.model, self.collision_model, self.visual_model)
-        self.viz.initViewer(open=True)
-        self.viz.loadViewerModel(color=[1.0, 1.0, 1.0, 1.0])
-        self.viz.displayFrames(True)
-        print(f"q: {self.q.T}")
-        pinocchio.forwardKinematics(self.model, self.data, self.q)
-        print(f"model: {self.model}")
-        # state buffers x, y, z, rx, ry, rz, rw, platform, head 2, l 6, r 6.
-        self.pin_q = np.zeros(22) 
+        self.config = Config()
+        self.rm_state = RealmanState(self.config)
+        self.rm_controller = Controller(self.config)
+
         self.door_handle_pose = np.zeros(7)  # [x, y, z, rx, ry, rz, rw]
-        self._lock = threading.Lock()
         self.create_timer(0.01, self._control_loop)
         self.counter = 0
-        self.approcahed = False
+        self.pregrasped = False
+
 
         # subscriptions
         self.create_subscription(
@@ -71,19 +53,11 @@ class RealmanControlNode(Node):
 
     def jointStateCallback(self, msg):
         # update platform joint
-        self.pin_q[7] = msg.position[0]
-        pos_map = dict(zip(msg.name, msg.position))
-        for side, base in (('l', 10), ('r', 16)):
-            self.pin_q[base:base + 6] = [pos_map[f"{side}_joint{i}"] for i in range(1, 7)]
+        self.rm_state.update_joint_state(msg)
 
     def basePoseCallback(self, msg):
-        for t in msg.transforms:
-            trans = t.transform.translation
-            rot   = t.transform.rotation
-            self.pin_q[0:7] = np.array([
-                trans.x, trans.y, trans.z,
-                rot.x, rot.y, rot.z, rot.w
-            ])
+        self.rm_state.update_base_pose(msg)
+
     def doorHandleCallback(self, msg):
         for t in msg.transforms:
             trans = t.transform.translation
@@ -94,129 +68,45 @@ class RealmanControlNode(Node):
             ])
 
 
-    def initPose(self, joint_state_msg, velocity_msgs):
-        joint_state_msg.position[0:12] = array('d', self.INIT_ARM)
-        joint_state_msg.position[12] = 0
-        joint_state_msg.position[13] = 0
-        joint_state_msg.position[14] = 0.4
-
-        velocity_msgs.linear.x   = 0.0
-        velocity_msgs.angular.z  = 0.0
-        joint_state_msg.header.stamp = self.get_clock().now().to_msg()
-        self.joint_state_pub.publish(joint_state_msg)
-        self.base_pub.publish(velocity_msgs)
+    def initPose(self):
+        self.sendRosCommand(self.config.INIT_JCOMMAND)
 
     def _control_loop(self):
-        joint_state_msg = JointState()
-        velocity_msgs   = Twist()
-        joint_state_msg.name  = self.JOINT_MSG_NAME
-        joint_state_msg.position = [0.0]*15
+
         if self.counter < 200:
-            self.initPose(joint_state_msg, velocity_msgs)
-        elif not self.approcahed:
-            self.approach(joint_state_msg, True)
-            self.approcahed = True
+            self.initPose()
+            
+        elif not self.pregrasped:
+            self.pregrasp(True)
+            self.pregrasped = True
 
         self.counter += 1
-        self.viz.display(self.pin_q)
+        self.rm_controller.viz.display(self.rm_state.state)
 
 
-    def approach(self, joint_state_msg, left_arm):
-        success = False
-        rot = np.array([
-            [0, 0, 1],
-            [0, -1, 0],
-            [1, 0, 0]
-        ])
-        des_pose = pinocchio.SE3(rot, np.array([3.40, 0.43, 1.016]))
-        print(self.pin_q )
+    def pregrasp(self, left_arm):
 
-        q_init_app = self.pin_q.copy()
-        # np.array([ 3.06160593e+00, -6.69872388e-05,  2.42999896e-01,  5.70327359e-07,
-        # 2.86647435e-07,  7.07373738e-01,  7.06839621e-01,  4.09100000e-01,
-        # 0.00000000e+00,  0.00000000e+00,  0.00000000e+00, -1.75070000e+00,
-        # -5.99800000e-01,  1.49990000e+00, -2.00000000e-04,  1.00000000e-04,
-        # 0.00000000e+00,  1.75070000e+00,  5.99800000e-01, -1.50010000e+00,
-        # -1.00000000e-04,  1.00000000e-04]
-        # )
-        # print(f"q_init_app: {q_init_app}")
-        JOINT_ID = 10 if left_arm else 16
-        eps = 1e-3
-        IT_MAX = 1000
-        DT = 0.05
-        damp = 1e-6
-        i = 0
-        while True:
-            pinocchio.forwardKinematics(self.model, self.data, q_init_app)
-            iMd = self.data.oMi[JOINT_ID].actInv(des_pose)
-            err = pinocchio.log(iMd).vector
-            if norm(err) < eps:
-                success = True
-                break
-            if i >= IT_MAX:
-                success = False
-                break
-            # J = pinocchio.computeJointJacobian(self.model, self.data, q_init_app, JOINT_ID)
-            J = pinocchio.computeFrameJacobian(self.model, self.data, q_init_app, self.model.getFrameId("l_gripper_base_link"))
-            J = -np.dot(pinocchio.Jlog6(iMd.inverse()), J)
-            J_select = J[:,9:15]
-            # print(f"J: {J}")
-            # print(J.shape)
-            v_select = -J_select.T.dot(solve(J_select.dot(J_select.T) + damp * np.eye(6), err))
-            v = np.zeros(21)
-            v[9:15] = v_select
-            print(f"v: {v}")
-            q_init_app = pinocchio.integrate(self.model, q_init_app, v * DT)
-            print(f"\nresult: {q_init_app.flatten().tolist()}")
-            self.viz.display(q_init_app)
-            if not i % 10:
-                print(f"{i}: error = {err.T}")
-            i += 1
-        if success:
-            print("Convergence achieved!")
-        else:
-            print(
-                "\n"
-                "Warning: the iterative algorithm has not reached convergence "
-                "to the desired precision"
-            )
-        print(f"\nresult: {q_init_app.flatten().tolist()}")
-        joint_state_msg.position[0:12] = array('d', q_init_app[10:22])
-        joint_state_msg.position[14] = 0.4
-        joint_state_msg.header.stamp = self.get_clock().now().to_msg()
-        self.joint_state_pub.publish(joint_state_msg)
+        # we use left arm to pregrasp the door handle
+        arm_idx = 0
+        jCommand = self.rm_controller.find_arm_inverse_kinematics(self.rm_state.state, self.door_handle_pose[:3] + self.config.HANDEL_GRIP_OFFSET, np.eye(3), arm_idx)
+        self.sendRosCommand(jCommand)
+
+
+    def sendRosCommand(self, joint_command = None, base_command = None):
+        if joint_command is not None:
+            joint_state_msg = JointState()
+            joint_state_msg.name = self.config.JOINT_MSG_NAME
+            joint_state_msg.position = array('d', joint_command)
+            joint_state_msg.header.stamp = self.get_clock().now().to_msg()
+            self.joint_state_pub.publish(joint_state_msg)
+        if base_command is not None:
+            velocity_msgs = Twist()
+            velocity_msgs.linear.x   = base_command[0]
+            velocity_msgs.angular.z  = base_command[1]
+            velocity_msgs.header.stamp = self.get_clock().now().to_msg()
+            self.base_pub.publish(velocity_msgs)
+
                 
-
-
-
-    # def main(self):
-    #     # Create a JointState message
-    #     joint_state_msg = JointState()
-    #     velocity_msgs   = Twist()
-    #     joint_state_msg.name  = self.JOINT_MSG_NAME
-
-    #     joint_state_msg.position = [0.0]*15
-    #     self.initPose(joint_state_msg, velocity_msgs)
-
-    #     need_to_approach = True
-    #     try:
-    #         while rclpy.ok():
-    #             joint_state_msg.header.stamp = self.get_clock().now().to_msg()
-    #             self.joint_state_pub.publish(joint_state_msg)
-    #             self.base_pub.publish(velocity_msgs)
-    #             rclpy.spin(self)
-    #             # self.viz.display(self.pin_q)
-    #             print("hello")
-    #             time.sleep(0.1)
-    #             if need_to_approach:
-    #                 self.approach(joint_state_msg, True)
-    #                 need_to_approach = False  
-    #             print(self.door_handle_pose)
-    #     except KeyboardInterrupt:
-    #         print("\nShutting down publisher...")
-    #     finally:
-    #         self.destroy_node()
-    #         rclpy.shutdown()
 
 def main():
     rclpy.init()
@@ -232,4 +122,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # rclpy.shutdown()
