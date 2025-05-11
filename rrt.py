@@ -136,6 +136,22 @@ class System():
                 time.sleep(step)
         self.viz.display(qs[-1])
 
+    def draw_init_goal(self, q1, q2):
+        """
+        Draw the initial and goal configuration
+        """
+
+        # Add a small blue sphere at the start configuration
+        # Add a small blue box at the start configuration
+        start_name = "world/start_marker"
+        self.viz.addBox(start_name, [0.1, 0.1, 0.1], [0., 0., 1., 1.])  # Blue color
+        self.viz.applyConfiguration(start_name, q1)
+
+        # Add a small green box at the goal configuration
+        goal_name = "world/goal_marker"
+        self.viz.addBox(goal_name, [0.1, 0.1, 0.1], [0., 1., 0., 1.])  # Green color
+        self.viz.applyConfiguration(goal_name, q2)
+
 
 class RRT():
     """
@@ -296,6 +312,24 @@ def addCylinderToUniverse(name, radius, length, placement, color=colors.red):
         )
     return geom
 
+
+def addBoxToUniverse(name, size, placement, color=colors.red):
+    geom = pin.GeometryObject(
+        name,
+        0,
+        hppfcl.Box(*size),
+        placement
+    )
+    new_id = collision_model.addGeometryObject(geom)
+    geom.meshColor = np.array(color)
+    visual_model.addGeometryObject(geom)
+    
+    for link_id in range(robot.model.nq):
+        collision_model.addCollisionPair(
+            pin.CollisionPair(link_id, new_id)
+        )
+    return geom
+
 def validation(key, q_g):
         vec = robot.framePlacement(key, 22).translation - robot.framePlacement(q_g, 22).translation
         return (float(np.linalg.norm(vec)) < eps_final)
@@ -313,7 +347,11 @@ if __name__ == "__main__":
             urdf_path,
         )
     data = model.createData()
-
+    # Print all robot joint names in order
+    print("Robot joint names in order:")
+    for i in range(1, model.njoints):
+        joint_name = model.names[i]
+        print(f"{i}: {joint_name}")
     collision_model = robot.collision_model
     visual_model = robot.visual_model
 
@@ -327,9 +365,9 @@ if __name__ == "__main__":
     )
     eps_final = .1
     
-    r_goal_p = np.array([0.4, -0.2, 1.5])
+    r_goal_p = np.array([0.4, -0.3, 1.5])
     r_goal_q = pin.Quaternion(1, 0, 0, 0).normalized().matrix()
-    l_goal_p = np.array([0.4, 0.2, 1.5])
+    l_goal_p = np.array([0.4, 0.3, 1.5])
     l_goal_q = pin.Quaternion(1, 0, 0, 0).normalized().matrix()
     max_iter=20000
     eps=5e-2
@@ -351,3 +389,4 @@ if __name__ == "__main__":
 
     rrt.solve(q_i, validation, qg=configuration.q)
     system.display_motion(rrt.get_path(configuration.q))
+    system.draw_init_goal(r_goal_p, l_goal_p)

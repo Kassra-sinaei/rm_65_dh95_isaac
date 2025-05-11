@@ -10,8 +10,8 @@ import matplotlib.pylab as plt
 import rclpy.logging; plt.ion()
 
 
-from pink import solve_ik, Configuration
-from pink.tasks import FrameTask
+from pink import solve_ik, Configuration # type: ignore
+from pink.tasks import FrameTask # type: ignore
 import crocoddyl
 
 from ament_index_python import get_package_share_directory
@@ -21,7 +21,8 @@ from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
 from tf2_msgs.msg import TFMessage
 
-from planner import Planner
+from rrt import RRT, System
+from hppfcl import Box
 
 class FSM(Node):
     def __init__(self, type, side, width):
@@ -81,18 +82,22 @@ class FSM(Node):
         # Setup Crocoddyl
         self.base_model = crocoddyl.ActionModelUnicycle()
         self.base_model.dt = 0.1
-        self.base_model.costWeights = np.matrix([10, 9]).T
-        self.base_model.stateWeights = np.matrix([1, 1, 5]).T
+        self.base_model.costWeights = np.matrix([9, 10]).T
+        self.base_model.stateWeights = np.matrix([0.5, 1, 20]).T
         self.data  = self.base_model.createData()
 
+        # Setup RRT Planner
+        self.system = System(self.robot)
+        self.rrt = RRT(self.system, N_bias=20, l_min=0.2, l_max=0.5, steer_delta=0.01)
+        self.eps_final = 0.03
         # Door Parameters
         self.door_type = type     # push or pull
         self.handle_side = side   # left or right
         self.door_width = width   # width of the door
         if self.handle_side == "left":
-            self.handle_offset = np.array([1.15, 0.20])
+            self.handle_offset = np.array([0.85, 0.2])
         else:
-            self.handle_offset = np.array([1.15, -0.20])
+            self.handle_offset = np.array([0.85, -0.2])
 
     def unicycleController(self, start, goal, T):
         e = (start - goal)
@@ -175,20 +180,72 @@ class FSM(Node):
                 msg.linear.x = res[0]
                 msg.angular.z = res[1]
                 self.base_pub.publish(msg)
+                self.rate.sleep()
                 # rclpy.logging.get_logger('fsm').info("Publishing base velocity ...")
             except Exception as e:
                 rclpy.logging.get_logger('fsm').error("Error in unicycleController")
 
+    def close_right_finger(self):
+        msg = JointState()
+        msg.name = ['r_finger_joint']
+        msg.position = [np.pi/4]
+        self.joint_state_pub.publish(msg)
+
+    def close_left_finger(self):
+        msg = JointState()
+        msg.name = ['l_finger_joint']
+        msg.position = [np.pi/4]
+        self.joint_state_pub.publish(msg)
+    
+    def open_right_finger(self):
+        msg = JointState()
+        msg.name = ['r_finger_joint']
+        msg.position = [0.0]
+        self.joint_state_pub.publish(msg)
+
+    def open_left_finger(self):
+        msg = JointState()
+        msg.name = ['l_finger_joint']
+        msg.position = [0.0]
+        self.joint_state_pub.publish(msg)
 
     def grasp(self):
+        # making sure the base is not moving
         msg = Twist()
         msg.linear.x = 0.0
         msg.angular.z = 0.0
         self.base_pub.publish(msg)
+
+
         if self.door_type == "push":
             local_handle = np.array([self.handle_pose[0] - self.base_pose[0], 
                                         self.handle_pose[1] - self.base_pose[1], 
-                                        self.handle_pose[2] - 0.243])
+                                        self.handle_pose[2] - 0.4])
+            
+            door_position = local_handle.copy()
+            door_position[0] += 0.05
+            R_y_90 = pin.utils.rotate('y', np.pi/2)
+            door_orientation = pin.Quaternion(self.handle_pose[6], self.handle_pose[3], 
+                                         self.handle_pose[4], self.handle_pose[5]).normalized().matrix()
+            door_placement = pin.SE3(door_orientation @ R_y_90, door_position[0:3])
+            door_geom = pin.GeometryObject(
+                "door",
+                0,
+                Box(0.05, self.door_width, 2.0),
+                door_placement
+            )
+            
+            # Add door to collision model
+            self.system.robot.collision_model.addGeometryObject(door_geom)
+            
+            # Recreate collision wrapper with updated model
+            from tp4.collision_wrapper import CollisionWrapper
+            self.system.colwrap = CollisionWrapper(self.system.robot)
+            
+            # Visualize the door in the system's viewer
+            self.system.viz.addBox("door", [0.05, self.door_width, 2.0], [0.8, 0.5, 0.2, 0.7])  # Brown-ish color
+            self.system.viz.applyConfiguration("door", door_placement)
+
             if self.handle_side == "left":
                 r_goal_p = local_handle
                 r_goal_q = pin.Quaternion(self.handle_pose[6], self.handle_pose[3], self.handle_pose[4], self.handle_pose[5]).normalized().matrix()
@@ -199,18 +256,42 @@ class FSM(Node):
                 l_goal_q = pin.Quaternion(self.handle_pose[6], self.handle_pose[3], self.handle_pose[4], self.handle_pose[5]).normalized().matrix()
                 r_goal_p = np.array([0.2, -0.2, 1.5])
                 r_goal_q = pin.Quaternion(1, 0, 0, 0).normalized().matrix()
-            q = self.pinkIK(r_goal_p, r_goal_q, l_goal_p, l_goal_q)
+            q_g = self.pinkIK(r_goal_p, r_goal_q, l_goal_p, l_goal_q)
+            q_i = [self.dual_arm_config[0], 0, 0,
+                   self.dual_arm_config[7], self.dual_arm_config[8], self.dual_arm_config[9], self.dual_arm_config[10], self.dual_arm_config[11], self.dual_arm_config[12],
+                    self.dual_arm_config[1], self.dual_arm_config[2], self.dual_arm_config[3], self.dual_arm_config[4], self.dual_arm_config[5], self.dual_arm_config[6]]
+                   
+            self.rrt.solve(q_i,  self.validation, qg = q_g)
             msg = JointState()
             msg.name = self.joint_names
-            msg.position = [q[0], 
-                            q[9], q[10], q[11], q[12], q[13], q[14],
-                            q[3], q[4], q[5], q[6], q[7], q[8]]
-            self.joint_state_pub.publish(msg)
-            print("publishing joint state ...")
+            qs = self.rrt.get_path(q_g)
+            for i in range(len(qs) - 1):
+                for q in self.system.get_path(qs[i], qs[i+1])[:-1]:
+                    msg.position = [q[0], 
+                                    q[9], q[10], q[11], q[12], q[13], q[14],
+                                    q[3], q[4], q[5], q[6], q[7], q[8]]
+                    self.joint_state_pub.publish(msg)
+                    self.system.viz.display(q)
+                    self.rate.sleep()
+                    self.rate.sleep()
+                    self.rate.sleep()
+            
+            if self.handle_side == "left":
+                self.close_right_finger()
+                self.open_left_finger()
+                self.state = "grasped"
+            else:
+                self.close_left_finger()
+                self.open_right_finger()
+                self.state = 'grasped'
+
         else:
             # TODO: implement pull type door grasping
             pass
-                                
+
+    def validation(self,key, q_g):
+        vec = self.robot.framePlacement(key, 22).translation - self.robot.framePlacement(q_g, 22).translation
+        return (float(np.linalg.norm(vec)) < self.eps_final)              
 
 def test(fsm):
     r_goal_p = np.array([-0.4, -0.4, 1.0])
@@ -255,12 +336,10 @@ if __name__ == "__main__":
                 fsm.grasp()
             else:
                 break
-            fsm.rate.sleep()
-
+            
     except KeyboardInterrupt:
+        print("Keyboard Interrupt, shutting down ...")
+        fsm.destroy_node()
         pass
     
-    rclpy.logging.get_logger('fsm').info("Keyboard Interrupt, shutting down ...")
-    fsm.destroy_node()
     rclpy.shutdown()
-    thread.join()
