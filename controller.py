@@ -29,7 +29,7 @@ class Controller:
 
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
 
-        des_rot = self.config.PIN_ARM_ROTATION_OFFSET[arm_idx] @ des_rot
+        des_rot =  des_rot @ self.config.PIN_ARM_ROTATION_OFFSET[arm_idx]
         frame_id = self.model.getFrameId(self.config.PIN_GIRPPER_FRAME_NAME[arm_idx])
         des_pose = pinocchio.SE3(des_rot, des_position)
         print("finding ik for arm", arm_idx, "with des_pose", des_pose)
@@ -51,10 +51,10 @@ class Controller:
                 break
             J = pinocchio.computeFrameJacobian(self.model, self.data, pin_q, frame_id)
             J = -np.dot(pinocchio.Jlog6(fMd.inverse()), J)
-            J_select = J[:,9:15]
+            J_select = J[:,self.config.PIN_JACOB_JOINT_ID[arm_idx]]
             v_select = -J_select.T.dot(solve(J_select.dot(J_select.T) + self.config.PIN_DAMP * np.eye(6), err))
             v = np.zeros(21)
-            v[9:15] = v_select
+            v[self.config.PIN_JACOB_JOINT_ID[arm_idx]] = v_select
             pin_q = pinocchio.integrate(self.model, pin_q, v * self.config.PIN_DT)
             sol_viz.display(pin_q)
             if not i % 10:
