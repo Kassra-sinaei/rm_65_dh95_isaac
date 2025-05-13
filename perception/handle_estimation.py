@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3.10
 # filepath: ~/alphaz_ws/src/handle_detection/scripts/handle_detection_node.py
 
 import rclpy
@@ -42,7 +42,8 @@ def DETIC_predictor():
     cfg = get_cfg()
     add_centernet_config(cfg)
     add_detic_config(cfg)
-    cfg.merge_from_file("configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
+    config_path = os.path.expanduser("~/rm_65_dh95_isaac/perception/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
+    cfg.merge_from_file(config_path)
     cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1 # set threshold for this model
     cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = 'rand'
@@ -52,7 +53,7 @@ def DETIC_predictor():
     return detic_predictor
 
 def SAM_predictor(device):
-    sam_checkpoint = "/root/sam_vit_h_4b8939.pth"
+    sam_checkpoint = "/root/rm_65_dh95_isaac/perception/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     device = device
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
@@ -209,9 +210,18 @@ class HandleDetectionNode(Node):
             self.handle_detection_pub.publish(mask_msg) 
 
             # Convert depth to 3D point
-            x, y, z = self.depth2point(x_center, y_center, self.depth_image[y_center, x_center])
-            point_msg = Point(x, y, z)
-            self.grip_publisher.publish(point_msg)
+            print(x_center, y_center)
+            try:
+                x, y, z = self.depth2point(x_center, y_center, self.depth_image[y_center, x_center])
+                print(self.depth_image.shape)
+                print("3D Point:", x, y, z)
+                point_msg = Point()
+                point_msg.x = float(x)
+                point_msg.y = float(y)
+                point_msg.z = float(z)
+                self.grip_publisher.publish(point_msg)
+            except Exception as e:
+                pass
         else:
             self.get_logger().info("No handles detected.")
         pass
@@ -224,6 +234,7 @@ class HandleDetectionNode(Node):
         z = - (y - self.ppy) / self.fy * depth_value
         y = -depth_value
         return x, y, z
+
 def main(args = None):
     rclpy.init(args=args)
     setup_logger() 
