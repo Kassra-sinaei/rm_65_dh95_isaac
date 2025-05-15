@@ -50,7 +50,8 @@ def DETIC_predictor():
     add_detic_config(cfg)
     config_path = os.path.expanduser(THIS_DIR+"/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
     cfg.merge_from_file(config_path)
-    cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
+    # cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
+    cfg.MODEL.WEIGHTS = THIS_DIR + "/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth"
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1 # set threshold for this model
     cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = 'rand'
     cfg.MODEL.ROI_HEADS.ONE_CLASS_PER_PROPOSAL = True # For better visualization purpose. Set to False for all classes.
@@ -183,10 +184,10 @@ class HandleDetectionNode(Node):
         self.depth_image = None
         # OpenCV Window
         # cv2.namedWindow("Handle Detection", cv2.WINDOW_NORMAL)
-        self.ppx = 320.0
-        self.ppy = 240.0
-        self.fx = 617.0
-        self.fy = 617.0
+        self.cx = 636.9041 # 320.0
+        self.cy = 367.2446 # 240.0
+        self.fx = 904.9690 # 617.0
+        self.fy = 905.4237  # 617.0
 
     def depth_callback(self, msg):
         # Convert ROS Image to OpenCV format
@@ -202,6 +203,7 @@ class HandleDetectionNode(Node):
         boxes, class_idx = Detic(image, self.metadata, self.detic_predictor, visualize=False)
 
         if len(boxes) > 0:
+            breakpoint()
             masks = SAM(cv_image, boxes, class_idx, self.metadata, self.sam_predictor)
             classes = [self.metadata.thing_classes[idx] for idx in class_idx]
             mask = masks[0].cpu().numpy()
@@ -233,11 +235,11 @@ class HandleDetectionNode(Node):
         pass
     
     def depth2point(self, x, y, depth_value):
-        x = (x - self.ppx) / self.fx * depth_value
-        y = (y - self.ppy) / self.fy * depth_value
+        x = (x - self.cx) / self.fx * depth_value
+        y = (y - self.cy) / self.fy * depth_value
         z = depth_value
-        # x = - (x - self.ppx) / self.fx * depth_value
-        # z = - (y - self.ppy) / self.fy * depth_value
+        # x = - (x - self.cx) / self.fx * depth_value
+        # z = - (y - self.cy) / self.fy * depth_value
         # y = -depth_value
         return x, y, z
 
