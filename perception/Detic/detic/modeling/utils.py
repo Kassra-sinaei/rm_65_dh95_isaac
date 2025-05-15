@@ -7,7 +7,7 @@ import os
 
 def load_class_freq(
     path='datasets/metadata/lvis_v1_train_cat_info.json', freq_weight=1.0):
-    path = os.path.expanduser("~/rm_65_dh95_isaac/perception/Detic/" + path)
+    path = os.path.expanduser("~/Repositories/rm_65_dh95_isaac/perception/Detic/" + path)
     cat_info = json.load(open(path, 'r'))
     cat_info = torch.tensor(
         [c['image_count'] for c in sorted(cat_info, key=lambda x: x['id'])])

@@ -42,7 +42,7 @@ def DETIC_predictor():
     cfg = get_cfg()
     add_centernet_config(cfg)
     add_detic_config(cfg)
-    config_path = os.path.expanduser("~/rm_65_dh95_isaac/perception/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
+    config_path = os.path.expanduser("~/Repositories/rm_65_dh95_isaac/perception/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
     cfg.merge_from_file(config_path)
     cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1 # set threshold for this model
@@ -53,7 +53,7 @@ def DETIC_predictor():
     return detic_predictor
 
 def SAM_predictor(device):
-    sam_checkpoint = "/root/rm_65_dh95_isaac/perception/sam_vit_h_4b8939.pth"
+    sam_checkpoint = "/home/simon/Repositories/rm_65_dh95_isaac/perception/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     device = device
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
@@ -227,12 +227,12 @@ class HandleDetectionNode(Node):
         pass
     
     def depth2point(self, x, y, depth_value):
-        # x = (x - self.ppx) / self.fx * depth_value
-        # y = (y - self.ppy) / self.fy * depth_value
-        # z = depth_value
-        x = - (x - self.ppx) / self.fx * depth_value
-        z = - (y - self.ppy) / self.fy * depth_value
-        y = -depth_value
+        x = (x - self.ppx) / self.fx * depth_value
+        y = (y - self.ppy) / self.fy * depth_value
+        z = depth_value
+        # x = - (x - self.ppx) / self.fx * depth_value
+        # z = - (y - self.ppy) / self.fy * depth_value
+        # y = -depth_value
         return x, y, z
 
 def main(args = None):
