@@ -35,6 +35,12 @@ from centernet.config import add_centernet_config
 from Detic.detic.config import add_detic_config
 from segment_anything import sam_model_registry, SamPredictor
 from geometry_msgs.msg import Point
+import os
+
+# absolute path to this file
+THIS_FILE = os.path.abspath(__file__)
+# directory containing this file
+THIS_DIR  = os.path.dirname(THIS_FILE)
 
 ############################################
 def DETIC_predictor():
@@ -42,7 +48,7 @@ def DETIC_predictor():
     cfg = get_cfg()
     add_centernet_config(cfg)
     add_detic_config(cfg)
-    config_path = os.path.expanduser("~/Repositories/rm_65_dh95_isaac/perception/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
+    config_path = os.path.expanduser(THIS_DIR+"/Detic/configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
     cfg.merge_from_file(config_path)
     cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.1 # set threshold for this model
@@ -53,7 +59,7 @@ def DETIC_predictor():
     return detic_predictor
 
 def SAM_predictor(device):
-    sam_checkpoint = "/home/simon/Repositories/rm_65_dh95_isaac/perception/sam_vit_h_4b8939.pth"
+    sam_checkpoint = THIS_DIR + "/sam_vit_h_4b8939.pth"
     model_type = "vit_h"
     device = device
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
