@@ -203,7 +203,6 @@ class HandleDetectionNode(Node):
         boxes, class_idx = Detic(image, self.metadata, self.detic_predictor, visualize=False)
 
         if len(boxes) > 0:
-            breakpoint()
             masks = SAM(cv_image, boxes, class_idx, self.metadata, self.sam_predictor)
             classes = [self.metadata.thing_classes[idx] for idx in class_idx]
             mask = masks[0].cpu().numpy()
@@ -223,10 +222,12 @@ class HandleDetectionNode(Node):
                 x, y, z = self.depth2point(x_center, y_center, self.depth_image[y_center, x_center])
                 print(self.depth_image.shape)
                 print("3D Point:", x, y, z)
+
+                # need to conver to the frame of the camera
                 point_msg = Point()
-                point_msg.x = float(x)
-                point_msg.y = float(y)
-                point_msg.z = float(z)
+                point_msg.x = float(z)
+                point_msg.y = float(-x)
+                point_msg.z = float(-y)
                 self.grip_publisher.publish(point_msg)
             except Exception as e:
                 pass

@@ -7,16 +7,20 @@ class Config:
         self.URDFPATH = "./urdf/overseas_65_corrected.urdf"
         self.MESH_DIR = "./urdf"
         self.INIT_ARM = [0, -1.75, -0.6, 1.5, 0, 0, 0, 1.75, 0.6, -1.5, 0, 0]   # left arm and right arm
-        self.INIT_JCOMMAND = self.INIT_ARM + [0.4, 0, 0]  # arm + platform + finger 2
+        self.INIT_JCOMMAND = self.INIT_ARM + [0.3, 0, 0]  # arm + platform + finger 2
         self.JOINT_MSG_NAME = [f"l_joint{i}" for i in range(1, 7)] + [f"r_joint{i}" for i in range(1, 7)] + ["platform_joint", "l_finger_joint", "r_finger_joint"]
 
-        self.HANDEL_PREGRIP_OFFSET = np.array([-0.3, -0.1, 0.0])
-        self.HANDEL_GRIP_OFFSET    = np.array([-0.17, -0.1, 0.0])
+        self.HANDEL_PREGRIP_OFFSET = np.array([-0.2, 0, 0.0])
+        self.HANDEL_GRIP_OFFSET    = np.array([-0.17, 0, 0.0])
         self.HANDEL_TURN_OFFSET    = self.HANDEL_GRIP_OFFSET + np.array([0.0, +0.02, -0.04])
         # 45 degree turn on the x axis
         self.HANDEL_TURN_ROTATION = np.array([[1, 0, 0],
                                               [0, np.cos(np.pi/4), -np.sin(np.pi/4)],
                                                 [0, np.sin(np.pi/4), np.cos(np.pi/4)]])
+
+        self.CAMERA_ROTATION_OFFSET = np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0],
+                                                [np.sin(-np.pi/2), np.cos(-np.pi/2), 0],
+                                                [0, 0, 1]])
 
         self.RIGHRT_ARM_PUSH_POSITION = np.array([-0.3, -0.55, 0.0])
         # pinocchio parameters

@@ -39,7 +39,6 @@ class Controller:
         sol_viz.loadViewerModel(rootNodeName="ik_sol_viz" , color=[1.0, 1.0, 1.0, 0.5])
         SUCCESS = False
         i = 0
-        breakpoint()
         while True:
             pinocchio.forwardKinematics(self.model, self.data, pin_q)
             oMf = pinocchio.updateFramePlacement(self.model, self.data, frame_id)
@@ -78,7 +77,10 @@ class Controller:
         pinocchio.forwardKinematics(self.model, self.data, pin_q)
         cam_frame_id = self.model.getFrameId("camera_link")
         oMf = pinocchio.updateFramePlacement(self.model, self.data, cam_frame_id)
-        cam_in_world = oMf.act(pose)
+        # the camera baselink is rotated by 90 degrees around the z axis
+        offset = pinocchio.SE3(self.config.CAMERA_ROTATION_OFFSET, np.array([0,0,0]))
+        cam_in_world = oMf.act(offset.act(pose))
+        return cam_in_world
 
 
         

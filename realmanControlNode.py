@@ -6,7 +6,7 @@ from array import array
 
 
 from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Point
 from tf2_msgs.msg import TFMessage
 
 from config import Config
@@ -16,6 +16,7 @@ from enum import Enum, auto
 
 class RobotState(Enum):
     INIT_POSE    = auto()
+    DETECT_HANDLE = auto()
     PREGRASP     = auto()
     GRASP        = auto()
     TURN         = auto()
@@ -42,6 +43,7 @@ class RealmanControlNode(Node):
         self.grasp_jcmd = None
         self.turn_jcmd = None
         self.open_jcmd = None
+        self.grip_Handle_pose = None
 
         # subscriptions
         self.create_subscription(
@@ -56,6 +58,11 @@ class RealmanControlNode(Node):
         self.create_subscription(
             TFMessage, '/isaac_sim/door_handle',
             self.doorHandleCallback, 10
+        )
+
+        self.create_subscription(
+            Point, '/grip_point',
+            self.gripHandleCallback, 10
         )
 
         # publishers
@@ -81,6 +88,14 @@ class RealmanControlNode(Node):
                 trans.x, trans.y, trans.z,
                 rot.x, rot.y, rot.z, rot.w
             ])
+    def gripHandleCallback(self, msg):
+        pose_in_camera = np.array([msg.x, msg.y, msg.z])
+        # convert to world frame
+        self.grip_Handle_pose = self.rm_controller.convert_pose_from_camera_to_world(
+            self.rm_state.state,
+            pose_in_camera
+        )
+
 
 
     def initPose(self):
@@ -90,6 +105,8 @@ class RealmanControlNode(Node):
         # dispatch based on current state
         if self.state == RobotState.INIT_POSE:
             self._handle_init_pose()
+        elif self.state == RobotState.DETECT_HANDLE:
+            self._handle_detect_handle()
         elif self.state == RobotState.PREGRASP:
             self._handle_pregrasp()
         elif self.state == RobotState.GRASP:
@@ -110,6 +127,11 @@ class RealmanControlNode(Node):
 
         if (self.get_clock().now() - self.state_start_time).nanoseconds > 300 * 10_000_000:
             # 300 * 0.01s == 3 seconds
+            self._transition_to(RobotState.DETECT_HANDLE)
+    
+    def _handle_detect_handle(self):
+        if self.grip_Handle_pose is not None:
+            self.get_logger().info("Handle detected")
             self._transition_to(RobotState.PREGRASP)
 
     def _handle_pregrasp(self):
@@ -117,7 +139,7 @@ class RealmanControlNode(Node):
         if self.pregrasp_jcmd is None:
             self.pregrasp_jcmd = self.rm_controller.find_arm_inverse_kinematics(
                 self.rm_state.state,
-                self.door_handle_pose[:3] + self.config.HANDEL_PREGRIP_OFFSET,
+                self.grip_Handle_pose  + self.config.HANDEL_PREGRIP_OFFSET,
                 np.eye(3),
                 arm_idx=0
             )
