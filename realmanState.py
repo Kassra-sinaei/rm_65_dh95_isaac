@@ -15,6 +15,8 @@ class RealmanState:
     def update_joint_state(self, jstate_msg):
         self.state[7] = jstate_msg.position[0]
         pos_map = dict(zip(jstate_msg.name, jstate_msg.position))
+        # update the head joint
+        self.state[8], self.state[9] = pos_map["head_joint1"], pos_map["head_joint2"]
         for side, base in (('l', 10), ('r', 16)):
             self.state[base:base + 6] = [pos_map[f"{side}_joint{i}"] for i in range(1, 7)]
 
