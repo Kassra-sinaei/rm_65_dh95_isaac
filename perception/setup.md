@@ -67,15 +67,20 @@ Before installing any of the doorbot dependencies make sure to have cuda 11.8 in
 
 ```bash
 conda install -c nvidia cudatoolkit=11.8
+conda install nvidia/label/cuda-11.8.0::cuda-toolkit 
+conda install nvidia/label/cuda-11.8.0::cuda-nvcc 
 ```
 Now proceed to install Door Bot required packages via conda. This part is adapted from [DoorBot GitHub Repository](https://github.com/TX-Leo/DoorBot/blob/master/open_door/dtsam_package/setup.sh)
 ## Door Bot Packages
 Instead of the door bot instruction follow this equivalent step for python 3.10 and ubuntu 22.04:
 ```bash
-conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 pytorch-cuda=11.8 -c pytorch -c nvidia
-conda install -c conda-forge open3d scikit-image flask
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+pip install open3d scikit-image flask
 
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git@v0.6'
+
+# if you get the libgdal error:
+# conda install gdal -c conda-forge 
 
 cd perception/Detic
 pip install -r requirements.txt
@@ -84,6 +89,7 @@ cd ../segment-anything
 pip install -e .
 cd ../
 wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
+wget https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 ```
 If you get the error for PIL.Image.LINEAR do this:
 ```bash
