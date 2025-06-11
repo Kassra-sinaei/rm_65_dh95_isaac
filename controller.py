@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import norm, solve
 import pinocchio
 from pinocchio.visualize import MeshcatVisualizer
-
+import crocoddyl
 
 
 
@@ -25,6 +25,13 @@ class Controller:
         self.viz.displayFrames(True)
         
         print(f"model: {self.model}")
+
+        # Crocoddyl MPC
+        self.base_model = crocoddyl.ActionModelUnicycle()
+        self.base_model.dt = 0.01
+        self.base_model.costWeights = np.matrix([5, 1]).T
+        self.base_model.stateWeights = np.matrix([1, 1, 10]).T
+        self.base_data  = self.base_model.createData()
 
 
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
@@ -83,4 +90,28 @@ class Controller:
         return cam_in_world
 
 
-        
+    def compute_base_twist_pd(self, state, goal):
+        error = goal - state
+        error[2] = (error[2] + np.pi) % (2 * np.pi) - np.pi
+        error = error.reshape(3, 1)
+        d = np.linalg.norm(error[:2])
+        return np.array([0.2 * d, -1.0 * (np.sin(error[2]) - (error[1])/d)])
+
+    def compute_base_twist(self, curr_state, des_position, T = 10):
+        """
+        Computes the base twist to move towards the desired position.
+        """
+        print(f"Going from {curr_state} to {des_position} in {T} steps")
+        e = -(des_position - curr_state)
+        # e[2] = (e[2] + np.pi) % (2 * np.pi) - np.pi
+
+        e.reshape(3, 1)
+        T = int(T / self.base_model.dt)
+        problem = crocoddyl.ShootingProblem(e, [ self.base_model ] * T, self.base_model)
+        ddp = crocoddyl.SolverDDP(problem)
+        if ddp.solve():
+            # print(e)
+            return ddp.us[0]
+        else:
+            print("DDP solve failed: ")
+            return None
