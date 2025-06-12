@@ -32,7 +32,7 @@ class Controller:
         self.viz = MeshcatVisualizer(self.model, self.collision_model, self.visual_model)
         self.viz.initViewer(open=True)
         self.viz.loadViewerModel(color=[1.0, 1.0, 1.0, 1.0])
-        self.viz.displayFrames(True)
+        # self.viz.displayFrames(True)
         
         print(f"model: {self.model}")
 
