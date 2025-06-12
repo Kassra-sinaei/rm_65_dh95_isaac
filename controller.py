@@ -3,6 +3,8 @@ from numpy.linalg import norm, solve
 import pinocchio
 from pinocchio.visualize import MeshcatVisualizer
 import crocoddyl
+from pink.tasks import FrameTask
+from pink import solve_ik, Configuration
 
 
 
@@ -15,6 +17,14 @@ class Controller:
             self.config.URDFPATH, self.config.MESH_DIR, pinocchio.JointModelFreeFlyer()
         )
         self.data = self.model.createData()
+        self.tasks = {
+            'base': FrameTask(self.config.PIN_BASE_FRAME_NAME, position_cost=1.0, orientation_cost=1.0),
+            'r_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[1], position_cost=1.0, orientation_cost=1.0),
+            'l_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[0], position_cost=1.0, orientation_cost=1.0)
+        }
+        self.joint_names = ['l_joint1', 'l_joint2', 'l_joint3', 'l_joint4', 'l_joint5', 'l_joint6',
+                            'r_joint1', 'r_joint2', 'r_joint3', 'r_joint4', 'r_joint5', 'r_joint6',
+                            'platform_joint', 'head_joint1', 'head_joint2']
 
         # initial config & visualizer
         self.q = pinocchio.neutral(self.model)
@@ -33,7 +43,19 @@ class Controller:
         self.base_model.stateWeights = np.matrix([1, 1, 10]).T
         self.base_data  = self.base_model.createData()
 
+    def pink_ik(self, base_q, base_p, r_goal_q, r_goal_p, l_goal_q, l_goal_p):
+        configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
 
+        self.tasks['base'].set_target(pinocchio.SE3(base_q, base_p))
+        self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_q, r_goal_p))
+        self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_q, l_goal_p))
+
+        for t in np.arange(0.0, 5, self.config.PIN_DT):
+            velocity = solve_ik(configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
+            configuration.integrate_inplace(velocity, self.config.PIN_DT)
+        joint_command = [configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
+        return joint_command
+    
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
 
         des_rot =  des_rot @ self.config.PIN_ARM_ROTATION_OFFSET[arm_idx]
@@ -64,7 +86,7 @@ class Controller:
             v[self.config.PIN_JACOB_JOINT_ID[arm_idx]] = v_select
             pin_q = pinocchio.integrate(self.model, pin_q, v * self.config.PIN_DT)
             sol_viz.display(pin_q)
-            if not i % 10:
+            if not i % 100:
                 print(f"{i}: error = {err.T}")
                 print(f"v: {v}")
                 print(f"\nresult: {pin_q.flatten().tolist()}")
@@ -90,21 +112,15 @@ class Controller:
         return cam_in_world
 
 
-    def compute_base_twist_pd(self, state, goal):
-        error = goal - state
-        error[2] = (error[2] + np.pi) % (2 * np.pi) - np.pi
+    def compute_base_twist_pd(self, error, T = None):
         error = error.reshape(3, 1)
         d = np.linalg.norm(error[:2])
-        return np.array([0.2 * d, -1.0 * (np.sin(error[2]) - (error[1])/d)])
+        return np.array([1.5 * d, -0.5 * (np.sin(error[2,0]) - error[1,0]/d)])
 
-    def compute_base_twist(self, curr_state, des_position, T = 10):
+    def compute_base_twist(self, e, T = 10):
         """
         Computes the base twist to move towards the desired position.
         """
-        print(f"Going from {curr_state} to {des_position} in {T} steps")
-        e = -(des_position - curr_state)
-        # e[2] = (e[2] + np.pi) % (2 * np.pi) - np.pi
-
         e.reshape(3, 1)
         T = int(T / self.base_model.dt)
         problem = crocoddyl.ShootingProblem(e, [ self.base_model ] * T, self.base_model)

@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 import numpy as np
+import pinocchio as pin
 import math
 from array import array
 
@@ -21,6 +22,9 @@ class RobotState(Enum):
     DETECT_HANDLE = auto()
     PREGRASP     = auto()
     GRASP        = auto()
+    PULL         = auto()
+    CONTACTSWITCH = auto()
+    TRAVERSE     = auto()
     TURN         = auto()
     OPENING      = auto()
     # add more states here as you go…
@@ -63,9 +67,13 @@ class RealmanControlNode(Node):
         )
 
         self.create_subscription(
-            Point, '/grip_point',
-            self.gripHandleCallback, 10
+            TFMessage, '/isaac_sim/door_handle',
+            self.doorHandleCallback, 10
         )
+        # self.create_subscription(
+        #     Point, '/grip_point',
+        #     self.gripHandleCallback, 10
+        # )
 
         # publishers
         self.joint_state_pub = self.create_publisher(
@@ -74,6 +82,7 @@ class RealmanControlNode(Node):
         self.base_pub = self.create_publisher(
             Twist, '/isaac_sim/cmd_vel', 10
         )
+        self.active_arm_id = 1
 
 
     def jointStateCallback(self, msg):
@@ -99,11 +108,14 @@ class RealmanControlNode(Node):
                 self.rm_state.state,
                 pose_in_camera
             )
-
-
-
-    def initPose(self):
-        self.sendRosCommand(self.config.INIT_JCOMMAND)
+    def doorHandleCallback(self, msg):
+        if self.grip_Handle_pose is None:
+            for tf in msg.transforms:
+                t, r = tf.transform.translation, tf.transform.rotation
+                self.grip_Handle_pose = np.array([
+                    t.x, t.y, t.z,
+                    r.x, r.y, r.z, r.w
+                ])
 
     def _control_loop(self):
         # dispatch based on current state
@@ -112,15 +124,18 @@ class RealmanControlNode(Node):
         elif self.state == RobotState.DETECT_HANDLE:
             self._handle_detect_handle()
         elif self.state == RobotState.APPROACH_DOOR:
-            self._approach_door()   
+            # self._approach_door()   
+            self._transition_to(RobotState.PREGRASP)
         elif self.state == RobotState.PREGRASP:
             self._handle_pregrasp()
         elif self.state == RobotState.GRASP:
             self._handle_grasp()
-        elif self.state == RobotState.TURN:
-            self._handle_turn()
-        elif self.state == RobotState.OPENING:
-            self._handle_opening()
+        # elif self.state == RobotState.PULL:
+        #     self._door_pull()
+        # elif self.state == RobotState.CONTACTSWITCH:
+        #     self._switch_contact()
+        # elif self.state == RobotState.TRAVERSE:
+        #     self._traverse()
         
         # visualize 
         self.rm_controller.viz.display(self.rm_state.state)
@@ -129,24 +144,35 @@ class RealmanControlNode(Node):
 
     def _handle_init_pose(self):
         # keep sending init-pose until 200 ticks have elapsed
-        self.sendRosCommand(self.config.INIT_JCOMMAND)
+        rot = pin.Quaternion(np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
+                                    [0,1,0],
+                                    [-np.sin(np.pi), 0.0, np.cos(np.pi)]]))
+        base_rot = pin.Quaternion(np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0],
+                                            [np.sin(np.pi/2), np.cos(np.pi/2), 0],
+                                            [0, 0, 1]]))
+        self.init_pose_command = self.rm_controller.pink_ik(base_rot, np.array([0,0,0]),rot, np.array([0.2, -0.4, 0.5]), rot, np.array([0.2, 0.4,0.5]))
+        self.sendRosCommand(self.init_pose_command)
 
-        if (self.get_clock().now() - self.state_start_time).nanoseconds > 300 * 10_000_000:
+        if (self.get_clock().now() - self.state_start_time).nanoseconds > 600 * 10_000_000:
             # 300 * 0.01s == 3 seconds
             self._transition_to(RobotState.DETECT_HANDLE)
     
     def _approach_door(self):
         grip_pose = np.array([self.grip_Handle_pose[0], self.grip_Handle_pose[1], 
                               0.0])
+        rotation_matrix = pin.Quaternion(self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5], self.rm_state.state[6]).toRotationMatrix()
         current_state = np.array([self.rm_state.state[0], self.rm_state.state[1], 
-                                  math.atan2(2.0 * (self.rm_state.state[6] * self.rm_state.state[5] + self.rm_state.state[3] * self.rm_state.state[4]), 1.0 - 2.0 * (self.rm_state.state[4] * self.rm_state.state[4] + self.rm_state.state[5] * self.rm_state.state[5]))])
+                                  np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])])
         goal = grip_pose - self.config.PULL_BASE_OFFSET
-        if np.linalg.norm((current_state - goal)[0:2]) > 0.1:
-            base_command = self.rm_controller.compute_base_twist(current_state, goal, T = 5)
+        error = goal - current_state
+        # error[2] = (error[2]) % (2 * np.pi)
+        print(f"Error: {error.T}, d: {np.linalg.norm(error[0:2])}, theta: {abs(error[2])}")
+        if np.linalg.norm(error[0:2]) > 0.1 or abs(error[2]) > 0.05:
+            base_command = self.rm_controller.compute_base_twist_pd(error, T = 5)
             self.sendRosCommand(base_command=base_command)
         else:
             self._transition_to(RobotState.PREGRASP)
-            self.sendRosCommand(base_command=np.array([0,0]))
+            self.sendRosCommand(base_command=[0.0, 0.0])
             self.grip_Handle_pose = None
 
     def _handle_detect_handle(self):
@@ -159,37 +185,40 @@ class RealmanControlNode(Node):
         if self.grip_Handle_pose is None:
             return
         if self.pregrasp_jcmd is None:
-            self.pregrasp_jcmd = self.rm_controller.find_arm_inverse_kinematics(
-                self.rm_state.state,
-                self.grip_Handle_pose  + self.config.HANDEL_PREGRIP_OFFSET,
-                np.eye(3),
-                arm_idx=0
+            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
+                                                  [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
+                                                  [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
+            rot_idle = pin.Quaternion(np.eye(3))
+            self.pregrasp_jcmd = self.rm_controller.pink_ik(
+                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
+                rot_active, self.grip_Handle_pose[:3] + self.config.HANDEL_PREGRIP_OFFSET,
+                rot_idle, self.rm_state.state[0:3] + np.array([0.6, -0.4, self.grip_Handle_pose[2]-0.3])
             )
 
             self.pregrasp_count = 0
-            self.get_logger().info("Computed pregrasp IK once")
 
         # every loop just send the _cached_ command
         self.sendRosCommand(self.pregrasp_jcmd)
-        if self.pregrasp_count > 100:
-            # 300 * 0.01s == 3 seconds
+        if self.pregrasp_count > 600:  # 6 seconds``
             self._transition_to(RobotState.GRASP)
         self.pregrasp_count += 1
 
     def _handle_grasp(self):
         # on first entry, compute and cache IK
         if self.grasp_jcmd is None:
-            self.grasp_jcmd = self.rm_controller.find_arm_inverse_kinematics(
-                self.rm_state.state,
-                self.door_handle_pose[:3] + self.config.HANDEL_GRIP_OFFSET,
-                np.eye(3),
-                arm_idx=0
+            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
+                                                  [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
+                                                  [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
+            rot_idle = pin.Quaternion(np.eye(3))
+            self.grasp_jcmd = self.rm_controller.pink_ik(
+                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
+                rot_active, self.grip_Handle_pose[:3],
+                rot_idle, self.rm_state.state[0:3] + np.array([0.6, -0.4, self.grip_Handle_pose[2]-0.3])
             )
             self.grasp_count = 0
-            self.get_logger().info("Computed grasp IK once")
 
         # every loop just send the _cached_ command
-        if self.grasp_count > 100:
+        if self.grasp_count > 300:
             self.grasp_jcmd[13] = 1.0
         if self.grasp_count > 150:
             self._transition_to(RobotState.TURN)
@@ -202,7 +231,7 @@ class RealmanControlNode(Node):
                 self.rm_state.state,
                 self.door_handle_pose[:3] + self.config.HANDEL_TURN_OFFSET,
                 self.config.HANDEL_TURN_ROTATION,
-                arm_idx=0
+                arm_idx=self.active_arm_id
             )
             self.grasp_count = 0
             self.turn_jcmd[13] = 1.0
@@ -218,7 +247,7 @@ class RealmanControlNode(Node):
                 self.rm_state.state,
                 self.door_handle_pose[:3] + self.config.RIGHRT_ARM_PUSH_POSITION,
                 np.eye(3),
-                arm_idx=1
+                arm_idx=self.active_arm_id
             )
         base_command = np.array([1.0, 0.0])
         self.sendRosCommand(base_command=base_command)
