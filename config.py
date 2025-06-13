@@ -10,9 +10,9 @@ class Config:
         self.INIT_JCOMMAND = self.INIT_ARM + [0.3, 0, 0]  # arm + platform + finger 2
         self.JOINT_MSG_NAME = [f"l_joint{i}" for i in range(1, 7)] + [f"r_joint{i}" for i in range(1, 7)] + ["platform_joint", "l_finger_joint", "r_finger_joint"]
 
-        self.HANDEL_PREGRIP_OFFSET = np.array([0.0, 0.2, 0.0])
-        self.HANDEL_GRIP_OFFSET    = np.array([-0.17, 0, 0.0])
-        self.HANDEL_TURN_OFFSET    = self.HANDEL_GRIP_OFFSET + np.array([0.0, +0.02, -0.04])
+        self.HANDEL_PREGRIP_OFFSET = np.array([0.02, 0.2, 0.0])
+        self.HANDEL_GRIP_OFFSET    = np.array([0.0, -0.15, 0.0]) + self.HANDEL_PREGRIP_OFFSET
+        self.HANDEL_TURN_OFFSET    = self.HANDEL_GRIP_OFFSET + np.array([0.0, +0.0, 0.04])
         # 45 degree turn on the x axis
         self.HANDEL_TURN_ROTATION = np.array([[1, 0, 0],
                                               [0, np.cos(np.pi/4), -np.sin(np.pi/4)],
@@ -46,3 +46,5 @@ class Config:
 
         # Parameters for Pulling Door
         self.PULL_BASE_OFFSET = np.array([0.0, -0.85, np.pi/4])
+        self.IDLE_EE_LEFT = np.array([0.4, -0.6, 0.4])
+        self.DOOR_PULL_OFFSET = np.array([-0.08, 0.4, 0.0]) + self.HANDEL_GRIP_OFFSET

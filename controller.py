@@ -43,17 +43,27 @@ class Controller:
         self.base_model.stateWeights = np.matrix([1, 1, 10]).T
         self.base_data  = self.base_model.createData()
 
-    def pink_ik(self, base_q, base_p, r_goal_q, r_goal_p, l_goal_q, l_goal_p):
-        configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
+    def pink_ik(self, base_q, base_p, r_goal_q, r_goal_p, l_goal_q, l_goal_p, current_config):
+        configuration = Configuration(self.model, self.data, current_config)
 
         self.tasks['base'].set_target(pinocchio.SE3(base_q, base_p))
         self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_q, r_goal_p))
         self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_q, l_goal_p))
 
-        for t in np.arange(0.0, 5, self.config.PIN_DT):
+        for t in np.arange(0.0, 10, self.config.PIN_DT):
             velocity = solve_ik(configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
             configuration.integrate_inplace(velocity, self.config.PIN_DT)
         joint_command = [configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
+
+        r_gripper_frame_id = self.model.getFrameId(self.config.PIN_GIRPPER_FRAME_NAME[1])
+        l_gripper_frame_id = self.model.getFrameId(self.config.PIN_GIRPPER_FRAME_NAME[0])
+        
+        pinocchio.forwardKinematics(self.model, self.data, configuration.q)
+        r_gripper_error = pinocchio.log(pinocchio.updateFramePlacement(self.model, self.data, r_gripper_frame_id).actInv(pinocchio.SE3(r_goal_q, r_goal_p))).vector
+        l_gripper_error = pinocchio.log(pinocchio.updateFramePlacement(self.model, self.data, l_gripper_frame_id).actInv(pinocchio.SE3(l_goal_q, l_goal_p))).vector
+        
+        print(f"Right gripper error: {r_gripper_error}")
+        print(f"Left gripper error: {l_gripper_error}")
         return joint_command
     
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
