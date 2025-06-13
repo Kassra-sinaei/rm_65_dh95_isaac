@@ -41,6 +41,7 @@ class Config:
         self.PIN_ARM_ROTATION_OFFSET = [self.PIN_LARM_ROTATION_OFFSET, self.PIN_RARM_ROTATION_OFFSET]
         self.PIN_GIRPPER_FRAME_NAME = ["l_gripper_base_link", "r_gripper_base_link"]
         self.PIN_BASE_FRAME_NAME = "base_link_underpan"
+        self.PIN_PLATFORM_FRAME_NAME = "platform_base_link"
         self.PIN_JACOB_JOINT_ID = [[9, 10, 11, 12, 13, 14], [15, 16, 17, 18, 19, 20]] # left and right arm
         self.PIN_Q_TO_JCOMMAND = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 7, 8, 9]   # arm + platform + finger 2
 
