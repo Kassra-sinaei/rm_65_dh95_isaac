@@ -5,6 +5,7 @@ import numpy as np
 import pinocchio as pin
 import math
 from array import array
+from scipy.spatial.transform import Rotation as R
 
 
 from sensor_msgs.msg import JointState
@@ -52,6 +53,7 @@ class RealmanControlNode(Node):
         self.grip_Handle_pose = None
         self.pull_jcmd = None
         self.switch_jcmd = None
+        self.base_rotate_pose = None
 
         # subscriptions
         self.create_subscription(
@@ -127,19 +129,19 @@ class RealmanControlNode(Node):
         elif self.state == RobotState.DETECT_HANDLE:
             self._handle_detect_handle()
         elif self.state == RobotState.APPROACH_DOOR:
-            # self._approach_door()   
-            self._transition_to(RobotState.PREGRASP)
+            self._approach_door()   
+            # self._transition_to(RobotState.PREGRASP)
         elif self.state == RobotState.PREGRASP:
             self._handle_pregrasp()
         elif self.state == RobotState.GRASP:
             self._handle_grasp()
         elif self.state == RobotState.PULL:
             self._handle_pull()
-        # elif self.state == RobotState.CONTACTSWITCH:
-        #     self._switch_contact()
-        # elif self.state == RobotState.TRAVERSE:
-        #     self._traverse()
-        
+        elif self.state == RobotState.CONTACTSWITCH:
+            self._switch_contact()
+        elif self.state == RobotState.TRAVERSE:
+            self._traverse()
+        # self._approach_door()
         # visualize 
         self.rm_controller.viz.display(self.rm_state.state)
 
@@ -157,21 +159,25 @@ class RealmanControlNode(Node):
             self.init_pose_command = self.rm_controller.pink_ik(base_rot, np.array([0,0,0]),rot, np.array([0.2, -0.4, 0.5]), rot, np.array([0.2, 0.4,0.5]), self.rm_state.state)
         self.sendRosCommand(self.init_pose_command)
 
-        if (self.get_clock().now() - self.state_start_time).nanoseconds > 400 * 10_000_000: # 4 seconds
+        if (self.get_clock().now() - self.state_start_time).nanoseconds > 600 * 10_000_000: # 4 seconds
             self._transition_to(RobotState.DETECT_HANDLE)
     
     def _approach_door(self):
-        grip_pose = np.array([self.grip_Handle_pose[0], self.grip_Handle_pose[1], 
-                              0.0])
-        rotation_matrix = pin.Quaternion(self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5], self.rm_state.state[6]).toRotationMatrix()
-        current_state = np.array([self.rm_state.state[0], self.rm_state.state[1], 
-                                  np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])])
-        goal = grip_pose - self.config.PULL_BASE_OFFSET
+        if self.grip_Handle_pose is None:
+            return
+        grip_pose = np.array([-self.grip_Handle_pose[1], self.grip_Handle_pose[0], 0.0])
+        rotation = R.from_quat(self.rm_state.state[3:7])
+        euler_angles = rotation.as_euler('zyx', degrees=False)
+        current_state = np.array([-self.rm_state.state[1], self.rm_state.state[0], euler_angles[0]])
+        goal = grip_pose + self.config.PULL_BASE_OFFSET
         error = goal - current_state
-        # error[2] = (error[2]) % (2 * np.pi)
-        print(f"Error: {error.T}, d: {np.linalg.norm(error[0:2])}, theta: {abs(error[2])}")
-        if np.linalg.norm(error[0:2]) > 0.1 or abs(error[2]) > 0.05:
-            base_command = self.rm_controller.compute_base_twist_pd(error, T = 5)
+        if np.linalg.norm(error[0:2]) > 0.15:
+            print(f"error: {error}")
+            base_command = self.rm_controller.compute_base_twist(-error, T = 2)
+            self.sendRosCommand(base_command=base_command)
+        elif np.linalg.norm(error[0:2]) < 0.15 and abs(error[2]) > 0.05:
+            base_command = self.rm_controller.base_yaw_control(error[2])
+            print(f"yaw error: {error[2]}")
             self.sendRosCommand(base_command=base_command)
         else:
             self._transition_to(RobotState.PREGRASP)
@@ -258,6 +264,10 @@ class RealmanControlNode(Node):
         self.pull_count += 1
 
     def _switch_contact(self):
+        if self.base_rotate_pose is None:
+            heading = 0
+            self.base_rotate_pose = np.array([self.rm_state.state[0], self.rm_state.state[1], 
+                                              heading - np.pi/4])
         if self.switch_jcmd is None:
             rot_active = pin.Quaternion(np.array([[1, 0, 0], 
                                                   [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
@@ -278,6 +288,8 @@ class RealmanControlNode(Node):
         self.sendRosCommand(self.grasp_jcmd)
         self.pull_count += 1
 
+    def _traverse(self):
+        pass
 
     def _handle_turn(self):
         if self.turn_jcmd is None:

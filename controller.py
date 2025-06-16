@@ -39,8 +39,8 @@ class Controller:
         # Crocoddyl MPC
         self.base_model = crocoddyl.ActionModelUnicycle()
         self.base_model.dt = 0.01
-        self.base_model.costWeights = np.matrix([5, 1]).T
-        self.base_model.stateWeights = np.matrix([1, 1, 10]).T
+        self.base_model.costWeights = np.matrix([100, 80]).T
+        self.base_model.stateWeights = np.matrix([1, 1, 1]).T
         self.base_data  = self.base_model.createData()
 
     def pink_ik(self, base_q, base_p, r_goal_q, r_goal_p, l_goal_q, l_goal_p, current_config):
@@ -120,13 +120,10 @@ class Controller:
         offset = pinocchio.SE3(self.config.CAMERA_ROTATION_OFFSET, np.array([0,0,0]))
         cam_in_world = oMf.act(offset.act(pose))
         return cam_in_world
-
-
-    def compute_base_twist_pd(self, error, T = None):
-        error = error.reshape(3, 1)
-        d = np.linalg.norm(error[:2])
-        return np.array([1.5 * d, -0.5 * (np.sin(error[2,0]) - error[1,0]/d)])
-
+    
+    def base_yaw_control(self, yaw_error):
+        return np.array([0.0, 20*yaw_error])
+    
     def compute_base_twist(self, e, T = 10):
         """
         Computes the base twist to move towards the desired position.
