@@ -281,6 +281,10 @@ class RealmanControlNode(Node):
         self.pull_count += 1
 
     def _switch_contact(self):
+        if self.base_rotate_pose is None:
+            heading = 0
+            self.base_rotate_pose = np.array([self.rm_state.state[0], self.rm_state.state[1], 
+                                              heading - np.pi/4])
         if self.switch_jcmd is None:
             self.switch_count = 0
         
@@ -303,6 +307,8 @@ class RealmanControlNode(Node):
         self.sendRosCommand(self.grasp_jcmd)
         self.pull_count += 1
 
+    def _traverse(self):
+        pass
 
     def _handle_turn(self):
         if self.turn_jcmd is None:
