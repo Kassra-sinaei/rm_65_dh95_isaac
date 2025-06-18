@@ -43,19 +43,28 @@ class Controller:
         self.base_model.stateWeights = np.matrix([1, 1, 10]).T
         self.base_data  = self.base_model.createData()
 
-    def pink_ik(self, base_q, base_p, r_goal_q, r_goal_p, l_goal_q, l_goal_p):
-        configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
+        # Pink setup
+        self.configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
+        for task in self.tasks.values():
+            task.set_target_from_configuration(self.configuration)
 
-        self.tasks['base'].set_target(pinocchio.SE3(base_q, base_p))
-        self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_q, r_goal_p))
-        self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_q, l_goal_p))
+    def pink_ik(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
+        # Update current configuration (The base keeps going down when using current configuration?)
+        # self.configuration.update(cur_q)
+            
+        # Update tasks with desired poses
+        self.tasks['base'].set_target(pinocchio.SE3(base_rot, base_p))
+        # self.tasks['base'].set_target_from_configuration(self.configuration)
+        self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_rot, r_goal_p))
+        self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_rot, l_goal_p))
 
-        for t in np.arange(0.0, 5, self.config.PIN_DT):
-            velocity = solve_ik(configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
-            configuration.integrate_inplace(velocity, self.config.PIN_DT)
-        joint_command = [configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
+        velocity = solve_ik(self.configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
+        self.configuration.integrate_inplace(velocity, self.config.PIN_DT)
+            
+        joint_command = [self.configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
+        # joint_command[-3] = 0.3  # platform joint
         return joint_command
-    
+      
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
 
         des_rot =  des_rot @ self.config.PIN_ARM_ROTATION_OFFSET[arm_idx]
@@ -131,3 +140,12 @@ class Controller:
         else:
             print("DDP solve failed: ")
             return None
+
+    def compute_frame_pose(self, q, frame_name):
+        """
+        Computes the end-effector pose for a given joint configuration.
+        """
+        pinocchio.forwardKinematics(self.model, self.data, q)
+        frame_id = self.model.getFrameId(frame_name)
+        oMf = pinocchio.updateFramePlacement(self.model, self.data, frame_id)
+        return oMf
