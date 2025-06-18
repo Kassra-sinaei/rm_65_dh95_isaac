@@ -4,7 +4,7 @@ import numpy as np
 class Config:
     def __init__(self):
         # URDF & Pinocchio setup
-        self.URDFPATH = "./urdf/overseas_65_corrected_abspath.urdf"
+        self.URDFPATH = "./urdf/overseas_65_corrected.urdf"
         self.MESH_DIR = "./urdf"
         self.INIT_ARM = [0, -1.75, -0.6, 1.5, 0, 0, 0, 1.75, 0.6, -1.5, 0, 0]   # left arm and right arm
         self.INIT_JCOMMAND = self.INIT_ARM + [0.3, 0, 0]  # arm + platform + finger 2

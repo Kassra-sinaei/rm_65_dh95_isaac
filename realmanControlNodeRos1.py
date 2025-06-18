@@ -2,7 +2,7 @@
 import rospy
 import numpy as np
 from array import array
-
+import pinocchio as pin
 
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist, Point
@@ -20,6 +20,7 @@ class RobotState(Enum):
     GRASP        = auto()
     TURN         = auto()
     OPENING      = auto()
+    IKTEST       = auto()
     # add more states here as you go…
     # LIFT   = auto()
     # DONE   = auto()
@@ -41,6 +42,7 @@ class RealmanControlNode:
         self.turn_jcmd = None
         self.open_jcmd = None
         self.grip_Handle_pose = None
+        self.first_entry = False
 
         # subscriptions
         rospy.Subscriber(
@@ -70,12 +72,9 @@ class RealmanControlNode:
         self.base_pub = rospy.Publisher(
             '/isaac_sim/cmd_vel', Twist, queue_size=10
         )
+        rospy.sleep(1)  # wait for subscribers to connect
 
-    def spin(self):
-        rate = rospy.Rate(100)  # 100 Hz = 0.01s interval
-        while not rospy.is_shutdown():
-            self._control_loop()
-            rate.sleep()
+        self.control_timer = rospy.Timer(rospy.Duration(0.01), self._control_loop)
             
     def jointStateCallback(self, msg):
         # update platform joint
@@ -105,12 +104,12 @@ class RealmanControlNode:
     def initPose(self):
         self.sendRosCommand(self.config.INIT_JCOMMAND)
 
-    def _control_loop(self):
+    def _control_loop(self, event):
         # dispatch based on current state
         if self.state == RobotState.INIT_POSE:
             self._handle_init_pose()
-        # elif self.state == RobotState.DETECT_HANDLE:
-        #     self._handle_detect_handle()
+        elif self.state == RobotState.IKTEST:
+            self._handle_pink_ik_test()
         # elif self.state == RobotState.PREGRASP:
         #     self._handle_pregrasp()
         # elif self.state == RobotState.GRASP:
@@ -129,10 +128,53 @@ class RealmanControlNode:
         # keep sending init-pose until 200 ticks have elapsed
         self.sendRosCommand(self.config.INIT_JCOMMAND)
 
-        if (rospy.get_rostime().now() - self.state_start_time).to_nsec() > 300 * 10_000_000:
+        if (rospy.get_rostime().now() - self.state_start_time).to_nsec() > 500 * 10_000_000:
             # 300 * 0.01s == 3 seconds
-            self._transition_to(RobotState.DETECT_HANDLE)
+            self._transition_to(RobotState.IKTEST)
     
+    def _handle_pink_ik_test(self):
+        if self.first_entry is False:
+            rospy.loginfo("Entering INIT_POSE state and sending initial pose command")
+            self.first_entry = True
+            rospy.loginfo("Initial EE pose: ")
+            l_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[0])
+            r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
+            self.initial_l_hand_pose = l_hand
+            self.initial_r_hand_pose = r_hand
+            rospy.loginfo(f"Left hand pose: {l_hand}")
+            rospy.loginfo(f"Right hand pose: {r_hand}")
+            self.rm_controller.configuration.update(self.rm_state.state)
+            self.initial_r_hand_pose.translation[0] += 0.1  # set initial right hand pose translation
+            self.initial_r_hand_pose.translation[1] += 0.1
+
+            
+        # keep sending init-pose until 200 ticks have elapsed
+        # self.sendRosCommand(self.config.INIT_JCOMMAND)
+        # keep sending init-pose until 200 ticks have elapsed
+
+        # hand_rot = pin.Quaternion(np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
+        #                             [0,1,0],
+        #                             [-np.sin(np.pi), 0.0, np.cos(np.pi)]]))
+        base_rot = pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix()
+        self.init_pose_command = self.rm_controller.pink_ik(self.rm_state.state,
+                                                            pin.Quaternion(self.rm_state.state[3:7]).normalized(), 
+                                                            self.rm_state.state[0:3],
+                                                            self.initial_l_hand_pose.rotation, 
+                                                            self.initial_l_hand_pose.translation, 
+                                                            self.initial_r_hand_pose.rotation, 
+                                                            self.initial_r_hand_pose.translation)
+
+        self.sendRosCommand(self.init_pose_command)
+
+        if (rospy.get_rostime().now() - self.state_start_time).to_nsec() > 1000 * 10_000_000:
+            # 300 * 0.01s == 3 seconds
+            rospy.loginfo("Current EE pose: ")
+            l_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[0])
+            r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
+            rospy.loginfo(f"Left hand pose: {l_hand}")
+            rospy.loginfo(f"Right hand pose: {r_hand}")
+            self._transition_to(RobotState.DETECT_HANDLE)
+
     def _handle_detect_handle(self):
         if self.grip_Handle_pose is not None:
             rospy.loginfo("Handle detected")
@@ -234,7 +276,7 @@ def main():
     # Initialize the RealmanControlNode
     node = RealmanControlNode()
     try:
-        node.spin()  # Keep the node running
+        rospy.spin()  # Keep the node running
     except KeyboardInterrupt:
         pass
     finally:
