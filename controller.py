@@ -5,6 +5,7 @@ from pinocchio.visualize import MeshcatVisualizer
 import crocoddyl
 from pink.tasks import FrameTask
 from pink import solve_ik, Configuration
+import meshcat_shapes
 
 
 
@@ -18,9 +19,9 @@ class Controller:
         )
         self.data = self.model.createData()
         self.tasks = {
-            'base': FrameTask(self.config.PIN_BASE_FRAME_NAME, position_cost=1.0, orientation_cost=1.0),
-            'r_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[1], position_cost=1.0, orientation_cost=1.0),
-            'l_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[0], position_cost=1.0, orientation_cost=1.0)
+            'base': FrameTask(self.config.PIN_BASE_FRAME_NAME, position_cost=10.0, orientation_cost=1.0),
+            'r_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[1], position_cost=10.0, orientation_cost=1.0),
+            'l_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[0], position_cost=10.0, orientation_cost=1.0)
         }
         self.joint_names = ['l_joint1', 'l_joint2', 'l_joint3', 'l_joint4', 'l_joint5', 'l_joint6',
                             'r_joint1', 'r_joint2', 'r_joint3', 'r_joint4', 'r_joint5', 'r_joint6',
@@ -33,6 +34,13 @@ class Controller:
         self.viz.initViewer(open=True)
         self.viz.loadViewerModel(color=[1.0, 1.0, 1.0, 1.0])
         # self.viz.displayFrames(True)
+        self.viewer = self.viz.viewer
+        meshcat_shapes.frame(self.viewer["l_gripper_target"], opacity=0.5)
+        meshcat_shapes.frame(self.viewer["l_gripper"], opacity=1.0)
+        meshcat_shapes.frame(self.viewer["r_gripper_target"], opacity=0.5)
+        meshcat_shapes.frame(self.viewer["r_gripper"], opacity=1.0)
+        meshcat_shapes.frame(self.viewer["base_target"], opacity=0.5)
+        meshcat_shapes.frame(self.viewer["base"], opacity=1.0)
         
         print(f"model: {self.model}")
 
@@ -55,6 +63,17 @@ class Controller:
         # self.tasks['base'].set_target_from_configuration(self.configuration)
         self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_rot, r_goal_p))
         self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_rot, l_goal_p))
+        
+        self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
+        self.viewer["l_gripper"].set_transform(
+            self.compute_frame_pose(cur_q, self.tasks["l_gripper"].frame).np
+        )
+
+        self.viewer["r_gripper_target"].set_transform(self.tasks['r_gripper'].transform_target_to_world.np)
+        self.viewer["r_gripper"].set_transform(
+            self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame).np
+        )
+
 
         for t in np.arange(0.0, 10, self.config.PIN_DT):
             velocity = solve_ik(configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
