@@ -74,7 +74,7 @@ class RealmanControlNode:
         )
         rospy.sleep(1)  # wait for subscribers to connect
 
-        self.control_timer = rospy.Timer(rospy.Duration(0.01), self._control_loop)
+        self.control_timer = rospy.Timer(rospy.Duration(self.config.PIN_DT), self._control_loop)
             
     def jointStateCallback(self, msg):
         # update platform joint
@@ -144,8 +144,10 @@ class RealmanControlNode:
             rospy.loginfo(f"Left hand pose: {l_hand}")
             rospy.loginfo(f"Right hand pose: {r_hand}")
             self.rm_controller.configuration.update(self.rm_state.state)
-            self.initial_r_hand_pose.translation[0] += 0.1  # set initial right hand pose translation
-            self.initial_r_hand_pose.translation[1] += 0.1
+            # self.initial_r_hand_pose.translation[0]  # set initial right hand pose translation
+            # self.initial_r_hand_pose.translation[1]
+            self.state_start_time = rospy.get_rostime().now()
+            self.initial_l_hand_height = self.initial_l_hand_pose.translation[2]
 
             
         # keep sending init-pose until 200 ticks have elapsed
@@ -156,17 +158,31 @@ class RealmanControlNode:
         #                             [0,1,0],
         #                             [-np.sin(np.pi), 0.0, np.cos(np.pi)]]))
         base_rot = pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix()
+        # Add a sinousoidal offset to the translation of the left hand
+        # Stop at a certain time
+        # l_hand_desired_trans = self.rm_controller.compute_frame_pose(
+        #     self.rm_state.state, 
+        #     self.config.PIN_GIRPPER_FRAME_NAME[0]).translation
+        # l_hand_desired_trans[2] = self.initial_l_hand_height
+        # if (rospy.get_rostime().now() - self.state_start_time).to_nsec() < 500 * 10_000_000:        
+        l_hand_desired_trans = self.initial_l_hand_pose.translation + np.array([
+            np.sin(rospy.get_rostime().now().to_sec() * 1.0) * 0.15,
+            0.0, 
+            0.0            
+        ])
+
+
         self.init_pose_command = self.rm_controller.pink_ik(self.rm_state.state,
                                                             pin.Quaternion(self.rm_state.state[3:7]).normalized(), 
                                                             self.rm_state.state[0:3],
                                                             self.initial_l_hand_pose.rotation, 
-                                                            self.initial_l_hand_pose.translation, 
+                                                            l_hand_desired_trans, 
                                                             self.initial_r_hand_pose.rotation, 
                                                             self.initial_r_hand_pose.translation)
 
         self.sendRosCommand(self.init_pose_command)
 
-        if (rospy.get_rostime().now() - self.state_start_time).to_nsec() > 1000 * 10_000_000:
+        if (rospy.get_rostime().now() - self.state_start_time).to_nsec() > 10000 * 10_000_000:
             # 300 * 0.01s == 3 seconds
             rospy.loginfo("Current EE pose: ")
             l_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[0])
