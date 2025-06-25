@@ -21,6 +21,7 @@ class Config:
         self.CAMERA_ROTATION_OFFSET = np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0],
                                                 [np.sin(-np.pi/2), np.cos(-np.pi/2), 0],
                                                 [0, 0, 1]])
+        self.BASE_ORIENTATION_OFFSET = np.array([0, 0 , np.sin(np.pi/2 / 2), np.cos(np.pi/2 / 2)])  # quaternion for 90 degree rotation around z axis
 
         self.RIGHRT_ARM_PUSH_POSITION = np.array([-0.3, -0.55, 0.0])
         # pinocchio parameters
