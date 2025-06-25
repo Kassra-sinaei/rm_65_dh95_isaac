@@ -45,34 +45,21 @@ class Controller:
         print(f"model: {self.model}")
 
         # Crocoddyl MPC
-        self.base_model = crocoddyl.ActionModelUnicycle()
-        self.base_model.dt = 0.01
-        self.base_model.costWeights = np.matrix([100, 80]).T
-        self.base_model.stateWeights = np.matrix([1, 1, 1]).T
-        self.base_data  = self.base_model.createData()
+        self.base_model = None
+        # Pink setup
+        self.configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
+        for task in self.tasks.values():
+            task.set_target_from_configuration(self.configuration)
 
-    def pink_ik(self, base_q, base_p, r_goal_q, r_goal_p, l_goal_q, l_goal_p, current_config):
-        configuration = Configuration(self.model, self.data, current_config)
+    def pink_ik(self, cur_q, base_rot, base_p, r_goal_rot, r_goal_p, l_goal_rot, l_goal_p):
+        configuration = Configuration(self.model, self.data, cur_q)
 
-    def pink_ik(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
-        # Update current configuration (The base keeps going down when using current configuration?)
-        # self.configuration.update(cur_q)
-            
-        # Update tasks with desired poses
         self.tasks['base'].set_target(pinocchio.SE3(base_rot, base_p))
-        # self.tasks['base'].set_target_from_configuration(self.configuration)
         self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_rot, r_goal_p))
         self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_rot, l_goal_p))
-        
-        self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
-        self.viewer["l_gripper"].set_transform(
-            self.compute_frame_pose(cur_q, self.tasks["l_gripper"].frame).np
-        )
 
+        self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
         self.viewer["r_gripper_target"].set_transform(self.tasks['r_gripper'].transform_target_to_world.np)
-        self.viewer["r_gripper"].set_transform(
-            self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame).np
-        )
 
 
         for t in np.arange(0.0, 10, self.config.PIN_DT):
@@ -80,15 +67,6 @@ class Controller:
             configuration.integrate_inplace(velocity, self.config.PIN_DT)
         joint_command = [configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
 
-        r_gripper_frame_id = self.model.getFrameId(self.config.PIN_GIRPPER_FRAME_NAME[1])
-        l_gripper_frame_id = self.model.getFrameId(self.config.PIN_GIRPPER_FRAME_NAME[0])
-        
-        pinocchio.forwardKinematics(self.model, self.data, configuration.q)
-        r_gripper_error = pinocchio.log(pinocchio.updateFramePlacement(self.model, self.data, r_gripper_frame_id).actInv(pinocchio.SE3(r_goal_q, r_goal_p))).vector
-        l_gripper_error = pinocchio.log(pinocchio.updateFramePlacement(self.model, self.data, l_gripper_frame_id).actInv(pinocchio.SE3(l_goal_q, l_goal_p))).vector
-        
-        print(f"Right gripper error: {r_gripper_error}")
-        print(f"Left gripper error: {l_gripper_error}")
         return joint_command
       
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
@@ -145,20 +123,24 @@ class Controller:
         offset = pinocchio.SE3(self.config.CAMERA_ROTATION_OFFSET, np.array([0,0,0]))
         cam_in_world = oMf.act(offset.act(pose))
         return cam_in_world
-    
-    def base_yaw_control(self, yaw_error):
-        return np.array([0.0, 20*yaw_error])
-    
-    def compute_base_twist(self, e, T = 10):
+
+
+    def compute_base_twist_pd(self, error, T = None):
+        error = error.reshape(3, 1)
+        d = np.linalg.norm(error[:2])
+        return np.array([1.5 * d, -0.5 * (np.sin(error[2,0]) - error[1,0]/d)])
+
+    def compute_base_twist(self, x_s, T = 10):
         """
         Computes the base twist to move towards the desired position.
         """
-        e.reshape(3, 1)
-        T = int(T / self.base_model.dt)
-        problem = crocoddyl.ShootingProblem(e, [ self.base_model ] * T, self.base_model)
+        x_s.reshape(3, 1)
+        T = int(T / self.config.BASE_DT)
+        problem = crocoddyl.ShootingProblem(x_s, [ self.base_model ] * T, self.base_model)
         ddp = crocoddyl.SolverDDP(problem)
-        if ddp.solve():
-            # print(e)
+        us_init = [np.zeros(2) for _ in range(T)]
+        xs_init = ddp.problem.rollout(us_init)
+        if ddp.solve(xs_init, us_init, maxiter=100):
             return ddp.us[0]
         else:
             print("DDP solve failed: ")
