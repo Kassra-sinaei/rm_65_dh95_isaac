@@ -43,3 +43,6 @@ class Config:
         self.PIN_GIRPPER_FRAME_NAME = ["l_gripper_base_link", "r_gripper_base_link"]
         self.PIN_JACOB_JOINT_ID = [[9, 10, 11, 12, 13, 14], [15, 16, 17, 18, 19, 20]] # left and right arm
         self.PIN_Q_TO_JCOMMAND = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 7, 8, 9]   # arm + platform + finger 2
+
+        # Parameters for Pulling Door
+        self.PULL_BASE_OFFSET = np.array([0.6, -0.5, 0.0])
