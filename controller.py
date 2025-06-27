@@ -41,6 +41,7 @@ class Controller:
         meshcat_shapes.frame(self.viewer["r_gripper"], opacity=1.0)
         meshcat_shapes.frame(self.viewer["base_target"], opacity=0.5)
         meshcat_shapes.frame(self.viewer["base"], opacity=1.0)
+        meshcat_shapes.frame(self.viewer["base_goal"], opacity=1.0)
         
         print(f"model: {self.model}")
 

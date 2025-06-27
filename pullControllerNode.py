@@ -140,20 +140,23 @@ class RealmanControlNode(Node):
     def _handle_init_pose(self):
         # keep sending init-pose until 200 ticks have elapsed
         if self.init_pose_command is None:
-            rot = np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
+            rot_r = np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
                                         [0,1,0],
                                         [-np.sin(np.pi), 0.0, np.cos(np.pi)]])
+            rot_l = rot_r @ np.array([[np.cos(np.pi), -np.sin(np.pi), 0],
+                                  [np.sin(np.pi), np.cos(np.pi), 0],
+                                  [0, 0, 1]])
             base_rot = np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0],
                                                 [np.sin(np.pi/2), np.cos(np.pi/2), 0],
                                                 [0, 0, 1]])
-            self.init_pose_command = self.rm_controller.pink_ik(self.rm_state.state, base_rot, np.array([0,0,0]),rot, np.array([0.2, -0.4, 0.5]), rot, np.array([0.2, 0.4,0.5]))
+            self.init_pose_command = self.rm_controller.pink_ik(self.rm_state.state, base_rot, np.array([0,0,0]),rot_r, np.array([0.2, -0.4, 0.5]), rot_l, np.array([0.2, 0.4,0.5]))
         self.sendRosCommand(self.init_pose_command)
 
         if (self.get_clock().now() - self.state_start_time).nanoseconds > 1000 * 10_000_000: # 10 seconds
             self._transition_to(RobotState.DETECT_HANDLE)
     
     def _approach_door(self):
-        grip_pose = np.array([-self.grip_Handle_pose[1], self.grip_Handle_pose[0], 
+        grip_pose = np.array([self.grip_Handle_pose[0], self.grip_Handle_pose[1], 
                                 0.0])
         goal = grip_pose - self.config.PULL_BASE_OFFSET
         print(f"Goal: {goal.T}")
@@ -173,19 +176,22 @@ class RealmanControlNode(Node):
             self.rm_controller.base_model.u_lb = np.array(self.config.U_BASE_MIN)
             self.rm_controller.base_model.u_ub = np.array(self.config.U_BASE_MAX)
         
-        rotation_matrix = pin.Quaternion(self.rm_state.state[6], self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5]).toRotationMatrix()# @ np.array([[-1,  0,  0],[ 0, -1,  0],[ 0,  0,  1]])
-        current_state = np.array([-self.rm_state.state[1], self.rm_state.state[0],
+        rotation_matrix = pin.Quaternion( self.rm_state.state[6], self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5]).toRotationMatrix() 
+        goal_transform = pin.SE3(rotation_matrix, np.array([goal[0], goal[1], self.rm_state.state[2]]))
+        self.rm_controller.viz.viewer["base_goal"].set_transform(goal_transform.homogeneous)
+        current_state = np.array([self.rm_state.state[0], self.rm_state.state[1],
                                     np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])])
         
         error = goal - current_state
         print(f"Current Pose: {current_state.T}")
-        if np.linalg.norm(error[0:2]) > 0.1 or abs(error[2]) > 0.05:
-            base_command = self.rm_controller.compute_base_twist(current_state, T = 5)
+        if np.linalg.norm(error[0:2]) > 0.1 or abs(error[2]) > 0.1:
+            base_command = self.rm_controller.compute_base_twist(-current_state, T = 5)
             if abs(base_command[0]) > 1.0 or abs(base_command[1]) > np.pi/6:
-                self.get_logger().warn("Base command exceeds limits, resetting to zero")
+                self.get_logger().warn("Base command exceeds limits, saturating it to bounds")
             self.sendRosCommand(base_command=base_command)
         else:
             self._transition_to(RobotState.PREGRASP)
+            self.rm_controller.base_model = None
             self.sendRosCommand(base_command=[0.0, 0.0])
             self.grip_Handle_pose = None
 
