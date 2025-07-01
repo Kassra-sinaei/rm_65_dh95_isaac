@@ -7,7 +7,7 @@ class Config:
         self.URDFPATH = "./urdf/overseas_65_corrected.urdf"
         self.MESH_DIR = "./urdf"
         self.INIT_ARM = [0, -1.75, -0.6, 1.5, 0, 0, 0, 1.75, 0.6, -1.5, 0, 0]   # left arm and right arm
-        self.INIT_JCOMMAND = self.INIT_ARM + [0.3, 0, 0]  # arm + platform + finger 2
+        self.INIT_JCOMMAND = self.INIT_ARM + [0.1, 0, 0]  # arm + platform + finger 2
         self.JOINT_MSG_NAME = [f"l_joint{i}" for i in range(1, 7)] + [f"r_joint{i}" for i in range(1, 7)] + ["platform_joint", "l_finger_joint", "r_finger_joint"]
 
         self.HANDEL_PREGRIP_OFFSET = np.array([0.0, 0.2, 0.0])
