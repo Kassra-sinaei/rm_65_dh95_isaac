@@ -4,7 +4,7 @@
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
   name="overseas_65_b_v_description">
-  <!-- <link name="base_link">
+  <link name="base_link">
     <inertial>
       <mass value="0.001"/>
       <origin xyz="0 0 0"/>
@@ -16,7 +16,7 @@
     <origin xyz="0 0 0" rpy="0 0 1.57079"/>
     <parent link="base_link"/>
     <child link="base_link_underpan"/>
-  </joint> -->
+  </joint>
   <link
     name="base_link_underpan">
     <inertial>

@@ -126,26 +126,32 @@ class Controller:
         return cam_in_world
 
 
-    def compute_base_twist_pd(self, error, T = None):
-        error = error.reshape(3, 1)
+    def compute_base_twist_pd(self, x_i, x_g, T = None):
+        error =(x_g - x_i).reshape(3, 1)
         d = np.linalg.norm(error[:2])
-        return np.array([1.5 * d, -0.5 * (np.sin(error[2,0]) - error[1,0]/d)])
-
-    def compute_base_twist(self, x_s, T = 10):
+        if d > 0.1:
+            return np.array([0.16 * d, -0.35 * (np.sin(x_i[2]) - error[1,0]/d)])
+        else:
+            return np.array([0.0, 1.0 * (error[2,0])])
+    
+    def compute_base_twist(self, x_s, d, T = 10):
         """
         Computes the base twist to move towards the desired position.
         """
-        x_s.reshape(3, 1)
-        T = int(T / self.config.BASE_DT)
-        problem = crocoddyl.ShootingProblem(x_s, [ self.base_model ] * T, self.base_model)
-        ddp = crocoddyl.SolverDDP(problem)
-        us_init = [np.zeros(2) for _ in range(T)]
-        xs_init = ddp.problem.rollout(us_init)
-        if ddp.solve(xs_init, us_init, maxiter=100):
-            return ddp.us[0]
+        if d > 0.1:
+            x_s.reshape(3, 1)
+            T = int(T / self.config.BASE_DT)
+            problem = crocoddyl.ShootingProblem(x_s, [ self.base_model ] * T, self.base_model)
+            ddp = crocoddyl.SolverDDP(problem)
+            us_init = [np.zeros(2) for _ in range(T)]
+            xs_init = ddp.problem.rollout(us_init)
+            if ddp.solve(xs_init, us_init, maxiter=100):
+                return ddp.us[0]
+            else:
+                print("DDP solve failed: ")
+                return None
         else:
-            print("DDP solve failed: ")
-            return None
+            return np.array([0.0, -1.0 * (x_s[2])])
 
     def compute_frame_pose(self, q, frame_name):
         """

@@ -46,11 +46,12 @@ class Config:
         self.PIN_Q_TO_JCOMMAND = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 7, 8, 9]   # arm + platform + finger 2
 
         # Parameters for Pulling Door
-        self.PULL_BASE_OFFSET = np.array([0.9, -0.2, 0.0])
+        self.PULL_BASE_OFFSET = np.array([0.9, 0.2, 0.0]) # 0.9, 0.2, 0.0
         self.IDLE_EE_LEFT = np.array([0.4, -0.6, 0.4])
+        self.IDLE_EE_RIGHT = np.array([0.4, 0.6, 0.4])
         self.DOOR_PULL_OFFSET = np.array([-0.08, 0.4, 0.0]) + self.HANDEL_GRIP_OFFSET
 
         # Mobile Base Controller Parameters
-        self.U_BASE_MIN = np.array([0.0, -np.pi/6])
-        self.U_BASE_MAX = np.array([+1.0, +np.pi/6])
+        self.U_BASE_MIN = np.array([-1.0, -np.pi/2])
+        self.U_BASE_MAX = np.array([+1.0, +np.pi/2])
         self.BASE_DT = 0.1
