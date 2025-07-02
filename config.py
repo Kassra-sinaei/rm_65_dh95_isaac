@@ -14,6 +14,12 @@ class Config:
         self.HANDEL_PREGRIP_OFFSET = np.array([0.0, 0.2, 0.0])
         self.HANDEL_GRIP_OFFSET    = np.array([-0.17, 0, 0.0])
         self.HANDEL_TURN_OFFSET    = self.HANDEL_GRIP_OFFSET + np.array([0.0, +0.02, -0.04])
+        # 45 degree turn on the z axis
+        self.HANDLE_PREGRASP_ROTATION_OFFSET = np.array([[1, 0, 0],
+                                                         [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
+                                                         [0, np.sin(np.pi/2), np.cos(np.pi/2)]])
+        self.HANDLE_PREGRASP_TRANSLATION_OFFSET_LOCAL = np.array([0.0, 0.2, 0.0])
+        self.HANDLE_GRASP_TRANSLATION_OFFSET_LOCAL = np.array([0.0, 0.1, 0.0])
         # 45 degree turn on the x axis
         self.HANDEL_TURN_ROTATION = np.array([[1, 0, 0],
                                               [0, np.cos(np.pi/4), -np.sin(np.pi/4)],
