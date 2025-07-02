@@ -14,15 +14,24 @@ class Controller:
         self.config = config
 
         # URDF & Pinocchio setup
-        self.model, self.collision_model, self.visual_model = pinocchio.buildModelsFromUrdf(
-            self.config.URDFPATH, self.config.MESH_DIR, pinocchio.JointModelFreeFlyer()
-        )
+        if self.config.FLOATING_BASE:
+            self.model, self.collision_model, self.visual_model = pinocchio.buildModelsFromUrdf(
+                self.config.URDFPATH, self.config.MESH_DIR, pinocchio.JointModelFreeFlyer()
+            )
+            self.tasks = {
+                'base': FrameTask(self.config.PIN_BASE_FRAME_NAME, position_cost=10.0, orientation_cost=1.0),
+                'r_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[1], position_cost=10.0, orientation_cost=1.0),
+                'l_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[0], position_cost=10.0, orientation_cost=1.0)
+            }
+        else:
+            self.model, self.collision_model, self.visual_model = pinocchio.buildModelsFromUrdf(
+                self.config.URDFPATH, self.config.MESH_DIR
+            )
+            self.tasks = {
+                'r_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[1], position_cost=10.0, orientation_cost=1.0),
+                'l_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[0], position_cost=10.0, orientation_cost=1.0)
+            }
         self.data = self.model.createData()
-        self.tasks = {
-            'base': FrameTask(self.config.PIN_BASE_FRAME_NAME, position_cost=10.0, orientation_cost=1.0),
-            'r_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[1], position_cost=10.0, orientation_cost=1.0),
-            'l_gripper':FrameTask(self.config.PIN_GIRPPER_FRAME_NAME[0], position_cost=10.0, orientation_cost=1.0)
-        }
         self.joint_names = ['l_joint1', 'l_joint2', 'l_joint3', 'l_joint4', 'l_joint5', 'l_joint6',
                             'r_joint1', 'r_joint2', 'r_joint3', 'r_joint4', 'r_joint5', 'r_joint6',
                             'platform_joint', 'head_joint1', 'head_joint2']
@@ -56,24 +65,44 @@ class Controller:
         for task in self.tasks.values():
             task.set_target_from_configuration(self.configuration)
 
-    def pink_ik(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
+    def update_pink_ik_configuration(self, cur_q):
+        if self.config.FLOATING_BASE:
+            self.configuration.update(cur_q)
+        else:
+            self.configuration.update(cur_q[7:])
+
+    def pink_ik_incremental(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
         # Update current configuration (The base keeps going down when using current configuration?)
-        # self.configuration.update(cur_q)
-            
+        # self.update_pink_ik_configuration(cur_q)
+        base_world = pinocchio.SE3(base_rot, base_p)
+        l_goal_world = pinocchio.SE3(l_goal_rot, l_goal_p)
+        r_goal_world = pinocchio.SE3(r_goal_rot, r_goal_p)
+        
         # Update tasks with desired poses
-        self.tasks['base'].set_target(pinocchio.SE3(base_rot, base_p))
-        # self.tasks['base'].set_target_from_configuration(self.configuration)
-        self.tasks['r_gripper'].set_target(pinocchio.SE3(r_goal_rot, r_goal_p))
-        self.tasks['l_gripper'].set_target(pinocchio.SE3(l_goal_rot, l_goal_p))
+        if self.config.FLOATING_BASE:
+            self.tasks['base'].set_target(base_world)
+        
+        # Convert goal poses to local base frame if using fixed base
+        if self.config.FLOATING_BASE:
+            self.tasks['l_gripper'].set_target(l_goal_world)
+            self.tasks['r_gripper'].set_target(r_goal_world)
+        else:
+            l_goal_local = base_world.actInv(l_goal_world)
+            r_goal_local = base_world.actInv(r_goal_world)
+            self.tasks['l_gripper'].set_target(l_goal_local)
+            self.tasks['r_gripper'].set_target(r_goal_local)
+
         
         self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
         self.viewer["l_gripper"].set_transform(
-            self.compute_frame_pose(cur_q, self.tasks["l_gripper"].frame).np
+            self.compute_frame_pose(cur_q, self.tasks["l_gripper"].frame, 
+            world_frame=self.config.FLOATING_BASE).np
         )
 
         self.viewer["r_gripper_target"].set_transform(self.tasks['r_gripper'].transform_target_to_world.np)
         self.viewer["r_gripper"].set_transform(
-            self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame).np
+            self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame,
+            world_frame=self.config.FLOATING_BASE).np
         )
 
 
@@ -83,14 +112,63 @@ class Controller:
         joint_command = [self.configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
         # joint_command[-3] = 0.3  # platform joint
         return joint_command
-      
+
+    def pink_ik(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
+        self.update_pink_ik_configuration(cur_q)
+        base_world = pinocchio.SE3(base_rot, base_p)
+        l_goal_world = pinocchio.SE3(l_goal_rot, l_goal_p)
+        r_goal_world = pinocchio.SE3(r_goal_rot, r_goal_p)
+        
+        # Update tasks with desired poses
+        if self.config.FLOATING_BASE:
+            self.tasks['base'].set_target(base_world)
+        
+        # Convert goal poses to local base frame if using fixed base
+        if self.config.FLOATING_BASE:
+            self.tasks['l_gripper'].set_target(l_goal_world)
+            self.tasks['r_gripper'].set_target(r_goal_world)
+        else:
+            l_goal_local = base_world.actInv(l_goal_world)
+            r_goal_local = base_world.actInv(r_goal_world)
+            self.tasks['l_gripper'].set_target(l_goal_local)
+            self.tasks['r_gripper'].set_target(r_goal_local)
+
+        
+        self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
+        self.viewer["l_gripper"].set_transform(
+            self.compute_frame_pose(cur_q, self.tasks["l_gripper"].frame, 
+            world_frame=self.config.FLOATING_BASE).np
+        )
+
+        self.viewer["r_gripper_target"].set_transform(self.tasks['r_gripper'].transform_target_to_world.np)
+        self.viewer["r_gripper"].set_transform(
+            self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame,
+            world_frame=self.config.FLOATING_BASE).np
+        )
+
+        # Solve until it converges
+        for _ in np.arange(0.0, 5.0, self.config.PIN_DT):
+            velocity = solve_ik(self.configuration, self.tasks.values(), 
+                                self.config.PIN_DT, solver="quadprog")
+            self.configuration.integrate_inplace(velocity, self.config.PIN_DT)
+        joint_command = [self.configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
+        return joint_command
+
     def find_arm_inverse_kinematics(self, curr_state, des_position, des_rot, arm_idx):
 
         des_rot =  des_rot @ self.config.PIN_ARM_ROTATION_OFFSET[arm_idx]
         frame_id = self.model.getFrameId(self.config.PIN_GIRPPER_FRAME_NAME[arm_idx])
         des_pose = pinocchio.SE3(des_rot, des_position)
         print("finding ik for arm", arm_idx, "with des_pose", des_pose)
-        pin_q = curr_state.copy()
+        if self.config.FLOATING_BASE:
+            pin_q = curr_state.copy()
+        else:
+            # Convert the desired pose to the local base frame
+            pin_q = curr_state[7:].copy()
+            base_rot = pinocchio.Quaternion(pin_q[3:7]).normalized().toRotationMatrix()
+            base_world = pinocchio.SE3(base_rot, pin_q[0:3])
+            des_pose = base_world.actInv(des_pose)
+
         sol_viz = MeshcatVisualizer(self.model, self.collision_model, self.visual_model)
         sol_viz.initViewer(self.viz.viewer)
         sol_viz.loadViewerModel(rootNodeName="ik_sol_viz" , color=[1.0, 1.0, 1.0, 0.5])
@@ -130,10 +208,7 @@ class Controller:
         return joint_command
     
     def convert_pose_from_camera_to_world(self, curr_state, pose):
-        pin_q = curr_state.copy()
-        pinocchio.forwardKinematics(self.model, self.data, pin_q)
-        cam_frame_id = self.model.getFrameId("camera_link")
-        oMf = pinocchio.updateFramePlacement(self.model, self.data, cam_frame_id)
+        oMf = self.compute_frame_pose(curr_state, "camera_link")
         # the camera baselink is rotated by 90 degrees around the z axis
         offset = pinocchio.SE3(self.config.CAMERA_ROTATION_OFFSET, np.array([0,0,0]))
         cam_in_world = oMf.act(offset.act(pose))
@@ -160,11 +235,24 @@ class Controller:
             print("DDP solve failed: ")
             return None
 
-    def compute_frame_pose(self, q, frame_name):
+    def compute_frame_pose(self, q, frame_name, world_frame = True):
         """
-        Computes the end-effector pose for a given joint configuration.
+        Computes the end-effector pose in the world frame for a given joint configuration.
         """
-        pinocchio.forwardKinematics(self.model, self.data, q)
+        base_rot = pinocchio.Quaternion(q[3:7]).normalized().toRotationMatrix()
+        base_world = pinocchio.SE3(base_rot, q[0:3])
+        if self.config.FLOATING_BASE:
+            pin_q = q.copy()
+        else:
+            pin_q = q[7:].copy()
+        pinocchio.forwardKinematics(self.model, self.data, pin_q)
         frame_id = self.model.getFrameId(frame_name)
         oMf = pinocchio.updateFramePlacement(self.model, self.data, frame_id)
-        return oMf
+        if self.config.FLOATING_BASE and world_frame:
+            return oMf
+        elif self.config.FLOATING_BASE and not world_frame:
+            return base_world.actInv(oMf)
+        elif not self.config.FLOATING_BASE and world_frame:
+            return base_world.act(oMf)
+        else:
+            return oMf
