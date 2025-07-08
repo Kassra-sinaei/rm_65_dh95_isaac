@@ -75,22 +75,36 @@ class Controller:
         # Update current configuration (The base keeps going down when using current configuration?)
         # self.update_pink_ik_configuration(cur_q)
         base_world = pinocchio.SE3(base_rot, base_p)
-        l_goal_world = pinocchio.SE3(l_goal_rot, l_goal_p)
-        r_goal_world = pinocchio.SE3(r_goal_rot, r_goal_p)
+        if l_goal_rot is not None:
+            l_goal_world = pinocchio.SE3(l_goal_rot, l_goal_p)
+            l_goal_local = base_world.actInv(l_goal_world)
+        if r_goal_rot is not None:
+            r_goal_world = pinocchio.SE3(r_goal_rot, r_goal_p)
+            r_goal_local = base_world.actInv(r_goal_world)
         
-        # Update tasks with desired poses
+        # Update tasks with current poses
         if self.config.FLOATING_BASE:
             self.tasks['base'].set_target(base_world)
         
         # Convert goal poses to local base frame if using fixed base
         if self.config.FLOATING_BASE:
-            self.tasks['l_gripper'].set_target(l_goal_world)
-            self.tasks['r_gripper'].set_target(r_goal_world)
+            if l_goal_rot is not None:
+                self.tasks['l_gripper'].set_target(l_goal_world)
+            else:
+                self.tasks['l_gripper'].set_target_from_configuration(self.configuration)
+            if r_goal_rot is not None:
+                self.tasks['r_gripper'].set_target(r_goal_world)
+            else:
+                self.tasks['r_gripper'].set_target_from_configuration(self.configuration)
         else:
-            l_goal_local = base_world.actInv(l_goal_world)
-            r_goal_local = base_world.actInv(r_goal_world)
-            self.tasks['l_gripper'].set_target(l_goal_local)
-            self.tasks['r_gripper'].set_target(r_goal_local)
+            if l_goal_rot is not None:
+                self.tasks['l_gripper'].set_target(l_goal_local)
+            else:
+                self.tasks['l_gripper'].set_target_from_configuration(self.configuration)
+            if r_goal_rot is not None:
+                self.tasks['r_gripper'].set_target(r_goal_local)
+            else:
+                self.tasks['r_gripper'].set_target_from_configuration(self.configuration)
 
         
         self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
