@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.10
+from turtle import back
 import rclpy
 from rclpy.node import Node
 import numpy as np
@@ -14,6 +15,8 @@ from config import Config
 from realmanState import RealmanState
 from controller import Controller
 from enum import Enum, auto
+
+from utils.trajectory import create_waypoint_trajectory, generate_waypoint_trajectory, create_arc_trajectory, create_circular_trajectory
 
 class RobotState(Enum):
     INIT_POSE    = auto()
@@ -51,6 +54,7 @@ class RealmanControlNode(Node):
         self.turn_jcmd = None
         self.open_jcmd = None
         self.pull_base_cmd = None
+        self.push_base_cmd = None
         self.grip_Handle_pose = None
         self.first_entry = True
 
@@ -88,6 +92,8 @@ class RealmanControlNode(Node):
         self.hold_door_left_reach_pose = None
         self.hold_door_right_pose = None
         self.hold_door_right_backward_pose = None
+        self.pull_swing_pose = None
+        self.push_swing_pose = None
 
         # wait for subscribers to connect
         self.create_timer(self.config.PIN_DT, self._control_loop)
@@ -134,6 +140,8 @@ class RealmanControlNode(Node):
             self._handle_hold_door_left()
         elif self.state == RobotState.HOLD_DOOR_RIGHT:
             self._handle_hold_door_right()
+        elif self.state == RobotState.PUSH_DOOR:
+            self._handle_push_door()
         # elif self.state == RobotState.DETECT_HANDLE:
         #     self._handle_detect_handle()
         # elif self.state == RobotState.PREGRASP:
@@ -169,27 +177,33 @@ class RealmanControlNode(Node):
             r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
             self.initial_l_hand_pose = l_hand
             self.initial_r_hand_pose = r_hand
+            self.initial_r_hand_pose_local = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1], world_frame=False)
             self.get_logger().info(f"Left hand pose: {l_hand}")
             self.get_logger().info(f"Right hand pose: {r_hand}")
             self.rm_controller.update_pink_ik_configuration(self.rm_state.state)
+            self.hold_door_left_approach_time = 0.0
+            self.hold_door_left_prehold_time = 3.0
+            self.hold_door_left_reach_time = 3.0
             self.state_start_time = self.get_clock().now()
 
         base_cmd = np.array([0.0, 0.0])
         
         # Approaching the door
-        if (self.get_clock().now() - self.state_start_time).nanoseconds < 400 * 10_000_000:
+        if (self.get_clock().now() - self.state_start_time).nanoseconds < 100 * self.hold_door_left_approach_time * 10_000_000:
             self.hold_door_left_jcmd = self.rm_controller.pink_ik_incremental(self.rm_state.state,
                                                             pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix(), 
                                                             self.rm_state.state[0:3],
                                                             None, None,
                                                             self.initial_r_hand_pose.rotation, 
                                                             self.initial_r_hand_pose.translation)
-            base_cmd = np.array([0.2, 0.0])
+            # base_cmd = np.array([0.2, 0.0])
+            base_cmd = np.array([0.0, 0.0])
             # The right arm gripper keeps closing
             self.hold_door_left_jcmd[14] = 1.0
 
         # Preholding the door (angle is hardcoded)
-        if 400 * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds < 700 * 10_000_000:
+        if 100 * (self.hold_door_left_approach_time) * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds \
+            < 100 * (self.hold_door_left_approach_time + self.hold_door_left_prehold_time) * 10_000_000:
             if self.hold_door_left_pose is None:
                 l_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[0])
                 r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
@@ -214,7 +228,8 @@ class RealmanControlNode(Node):
             self.hold_door_left_jcmd[14] = 1.0
 
         # Reach the door to hold it with an offset from the left hand in the left hand frame
-        if  700 * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds < 1000 * 10_000_000:
+        if  100 * (self.hold_door_left_approach_time + self.hold_door_left_prehold_time) * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds \
+            < 100 * (self.hold_door_left_approach_time + self.hold_door_left_prehold_time + self.hold_door_left_reach_time) * 10_000_000:
             if self.hold_door_left_reach_pose is None:
                 l_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[0])
                 self.hold_door_left_reach_pose = l_hand
@@ -233,7 +248,7 @@ class RealmanControlNode(Node):
             
         self.sendRosCommand(self.hold_door_left_jcmd, base_cmd)
 
-        if (self.get_clock().now() - self.state_start_time).nanoseconds >= 1000 * 10_000_000:
+        if (self.get_clock().now() - self.state_start_time).nanoseconds >= 100 * (self.hold_door_left_approach_time + self.hold_door_left_prehold_time + self.hold_door_left_reach_time) * 10_000_000:
             self.first_entry = True
             self._transition_to(RobotState.HOLD_DOOR_RIGHT)
 
@@ -249,10 +264,22 @@ class RealmanControlNode(Node):
             self.get_logger().info(f"Left hand pose: {l_hand}")
             self.get_logger().info(f"Right hand pose: {r_hand}")
             self.rm_controller.update_pink_ik_configuration(self.rm_state.state)
+            self.hold_door_right_release_gripper_time = 3.0
+            self.hold_door_right_backward_arm_time = 2.0
+            self.hold_door_right_contact_switch = 8.0
+            self.hold_door_right_put_down_left_arm = 4.0
             self.state_start_time = self.get_clock().now()
+            
+            # Initialize trajectory parameters
+            self.trajectory_start_time = None
+            self.trajectory_start_time_homing = None
+            self.initial_r_hand_pose_for_trajectory = None
+            self.final_r_hand_pose_for_trajectory = None
+
+        base_cmd = np.array([0.0, 0.0])
 
         # Fix the joint angles and keep the right gripper open
-        if (self.get_clock().now() - self.state_start_time).nanoseconds < 400 * 10_000_000:
+        if (self.get_clock().now() - self.state_start_time).nanoseconds < 100 * (self.hold_door_right_release_gripper_time) * 10_000_000:
             self.hold_door_right_jcmd = self.rm_controller.pink_ik_incremental(self.rm_state.state,
                                                                 pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix(), 
                                                                 self.rm_state.state[0:3],
@@ -261,7 +288,8 @@ class RealmanControlNode(Node):
             self.hold_door_right_jcmd[14] = 0.0
 
         # Backward the right arm
-        if 400 * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds < 100000 * 10_000_000:
+        if 100 * (self.hold_door_right_release_gripper_time) * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds \
+            < 100 * (self.hold_door_right_release_gripper_time + self.hold_door_right_backward_arm_time) * 10_000_000:
             if self.hold_door_right_backward_pose is None:
                 r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
                 self.hold_door_right_backward_pose = r_hand
@@ -275,13 +303,165 @@ class RealmanControlNode(Node):
                                                             self.hold_door_right_backward_pose.translation)
             self.hold_door_right_jcmd[14] = 0.0
 
-        
-        
-        self.sendRosCommand(self.hold_door_right_jcmd)
+        # Generate and track trajectory for the right arm
+        if 100 * (self.hold_door_right_release_gripper_time + self.hold_door_right_backward_arm_time) * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds \
+            < 100 * (self.hold_door_right_release_gripper_time + self.hold_door_right_backward_arm_time + self.hold_door_right_contact_switch) * 10_000_000:
+            # Initialize trajectory on first entry to this phase
+            if self.trajectory_start_time is None:
+                self.trajectory_start_time = self.get_clock().now()
+                l_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[0])
+                r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
+                self.initial_r_hand_pose_for_trajectory = r_hand
+                
+                # Create final pose with offset
+                self.mid_r_hand_pose_for_trajectory = r_hand.copy()
+                self.mid_r_hand_pose_for_trajectory.rotation = r_hand.rotation @ pin.utils.rpyToMatrix(np.array([0.0, 0.0, -np.pi/2.0]))
+                self.mid_r_hand_pose_for_trajectory.translation += r_hand.rotation @ np.array([0.2, -0.15, 0.0])
+                self.final_r_hand_pose_for_trajectory = r_hand.copy()
+                self.final_r_hand_pose_for_trajectory.rotation = r_hand.rotation @ pin.utils.rpyToMatrix(np.array([0.0, 0.0, -np.pi/2.0])) \
+                    @ pin.utils.rpyToMatrix(np.array([np.pi/8.0, 0.0, 0.0]))
+                self.final_r_hand_pose_for_trajectory.translation += r_hand.rotation @ np.array([0.22, -0.15, 0.12])
+                # self.final_r_hand_pose_for_trajectory = r_hand.copy()
+                # self.final_r_hand_pose_for_trajectory.rotation = r_hand.rotation @ pin.utils.rpyToMatrix(np.array([0.0, 0.0, -np.pi/2.0]))
+                # self.final_r_hand_pose_for_trajectory.translation += r_hand.rotation @ np.array([0.16, -0.15, 0.15])
 
-        if (self.get_clock().now() - self.state_start_time).nanoseconds > 100000 * 10_000_000:
+                
+                # Example 1: Arc trajectory (uncomment to use)
+                # self.waypoints = self._create_arc_trajectory(
+                #     self.initial_r_hand_pose_for_trajectory,
+                #     self.final_r_hand_pose_for_trajectory,
+                #     arc_height=0.05,  # 5cm arc height
+                #     num_waypoints=3
+                # )
+                
+                # Example 2: Custom waypoints (uncomment to use)
+                # Create intermediate waypoint for more complex path
+                # mid_pose = r_hand.copy()
+                # mid_pose.translation += r_hand.rotation @ np.array([0.0, 0.0, 0.05])  # Move up first
+                # self.waypoints = self._create_waypoint_trajectory(
+                #     self.initial_r_hand_pose_for_trajectory,
+                #     self.final_r_hand_pose_for_trajectory,
+                #     intermediate_waypoints=[mid_pose]
+                # )
+                
+                # For now, use simple direct trajectory
+                self.waypoints = create_waypoint_trajectory(
+                    self.initial_r_hand_pose_for_trajectory,
+                    self.final_r_hand_pose_for_trajectory,
+                    intermediate_waypoints=[self.mid_r_hand_pose_for_trajectory]
+                )
+                # self.trajectory_duration = 3.0 * len(self.waypoints)
+                self.trajectory_duration = self.hold_door_right_contact_switch
+                
+                self.get_logger().info(f"Starting waypoint trajectory with {len(self.waypoints)} waypoints")
+                for i, wp in enumerate(self.waypoints):
+                    self.get_logger().info(f"Waypoint {i}: {wp.translation}")
+            
+            # Calculate trajectory progress
+            elapsed_time = (self.get_clock().now() - self.trajectory_start_time).nanoseconds / 1e9
+            
+            # Generate smooth trajectory through waypoints
+            current_target_pose = generate_waypoint_trajectory(
+                self.waypoints,
+                self.trajectory_duration,
+                elapsed_time
+            )
+            
+            self.hold_door_right_jcmd = self.rm_controller.pink_ik_incremental(self.rm_state.state,
+                                                    pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix(), 
+                                                    self.rm_state.state[0:3],
+                                                    None, None,
+                                                    current_target_pose.rotation, 
+                                                    current_target_pose.translation)
+            self.hold_door_right_jcmd[14] = 0.0
+            base_cmd = np.array([0.0, 0.0])
+
+        if 100 * (self.hold_door_right_release_gripper_time + self.hold_door_right_backward_arm_time \
+            + self.hold_door_right_contact_switch) * 10_000_000 <= (self.get_clock().now() - self.state_start_time).nanoseconds \
+            < 100 * (self.hold_door_right_release_gripper_time + self.hold_door_right_backward_arm_time \
+                + self.hold_door_right_contact_switch + self.hold_door_right_put_down_left_arm) * 10_000_000:
+            if self.trajectory_start_time_homing is None:
+                self.trajectory_start_time_homing = self.get_clock().now()
+                self.init_current_state = np.array(self.rm_state.state[7:13])
+
+            elapsed_time = (self.get_clock().now() - self.trajectory_start_time_homing).nanoseconds / 1e9
+            phase = elapsed_time / self.hold_door_right_put_down_left_arm            
+            # Convert lists to numpy arrays for arithmetic operations
+            
+            l_arm_homing = np.array(self.config.INIT_ARM[0:6])
+            result = (1 - phase) * self.init_current_state + phase * l_arm_homing
+            # Convert back to list for assignment
+            self.hold_door_right_jcmd[0:6] = result.tolist()
+
+        self.sendRosCommand(self.hold_door_right_jcmd, base_cmd)
+
+        if (self.get_clock().now() - self.state_start_time).nanoseconds > 100 * (self.hold_door_right_release_gripper_time \
+            + self.hold_door_right_backward_arm_time \
+            + self.hold_door_right_contact_switch + self.hold_door_right_put_down_left_arm) * 10_000_000:
             self.first_entry = True
-            self._transition_to(RobotState.DETECT_HANDLE)
+            self._transition_to(RobotState.PUSH_DOOR)
+
+    def _handle_push_door(self):
+        if self.first_entry == True:
+            self.first_entry = False
+            forward_speed = 0.0
+            if forward_speed == 0.0:
+                self.push_travel_time = 0.0
+            else:
+                self.push_travel_time = 0.5 / abs(forward_speed)
+            self.push_swing_time = 5.0
+            # swing_time = 1
+            self.push_base_cmd = np.array([forward_speed, 0.0])
+            self.state_start_time = self.get_clock().now()
+            self.rm_controller.update_pink_ik_configuration(self.rm_state.state)
+
+            # Initialize trajectory parameters
+            self.trajectory_start_time = None
+            
+
+        if self.push_base_cmd is not None:
+            # Swing the arm to the right to open the door
+            if (self.get_clock().now() - self.state_start_time).nanoseconds > 100 * self.push_travel_time * 10_000_000:
+                if self.push_swing_pose is None:
+                    base_world_rot = pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix()
+                    base_pose_world = pin.SE3(base_world_rot, self.rm_state.state[0:3])
+                    r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, 
+                        self.config.PIN_GIRPPER_FRAME_NAME[1])
+                    r_hand_local = self.rm_controller.compute_frame_pose(self.rm_state.state, 
+                        self.config.PIN_GIRPPER_FRAME_NAME[1], world_frame=False)
+                    r_hand_local.translation += np.array([-0.45, 0.1, 0.0])
+                    self.push_swing_pose = base_pose_world.act(r_hand_local)
+                    self.push_swing_pose.rotation = r_hand.rotation @ pin.utils.rpyToMatrix(np.array([np.pi/4.0, 0.0, 0.0]))
+                    self.waypoints = create_waypoint_trajectory(
+                        r_hand,
+                        self.push_swing_pose
+                    )
+                    self.trajectory_duration = self.push_swing_time
+                    self.trajectory_start_time = self.get_clock().now()
+
+                elapsed_time = (self.get_clock().now() - self.trajectory_start_time).nanoseconds / 1e9
+                current_target_pose = generate_waypoint_trajectory(
+                    self.waypoints,
+                    self.trajectory_duration,
+                    elapsed_time
+                )
+                self.push_swing_jcmd = self.rm_controller.pink_ik_incremental(self.rm_state.state,
+                                                            pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix(), 
+                                                            self.rm_state.state[0:3],
+                                                            None, None,
+                                                            current_target_pose.rotation, 
+                                                            current_target_pose.translation)
+                self.push_swing_jcmd[14] = 0.0
+                self.push_base_cmd = np.array([0.0, 0.0])
+                self.sendRosCommand(self.push_swing_jcmd)
+                # self._transition_to(RobotState.HOLD_DOOR_LEFT)
+            
+            if (self.get_clock().now() - self.state_start_time).nanoseconds > 100000 * 10_000_000:
+                self._transition_to(RobotState.HOLD_DOOR_LEFT)
+            
+            self.sendRosCommand(base_command=self.push_base_cmd)
+
+        
 
     def _handle_detect_handle(self):
         if self.grip_Handle_pose is not None:
@@ -316,27 +496,6 @@ class RealmanControlNode(Node):
             self.sendRosCommand(self.pregrasp_jcmd)
             if (self.get_clock().now() - self.state_start_time).nanoseconds > 300 * 10_000_000:
                 self._transition_to(RobotState.GRASP)
-
-
-        
-        # # on first entry, compute and cache IK
-        # if self.pregrasp_jcmd is None:
-        #     self.pregrasp_jcmd = self.rm_controller.find_arm_inverse_kinematics(
-        #         self.rm_state.state,
-        #         self.grip_Handle_pose  + self.config.HANDEL_PREGRIP_OFFSET,
-        #         np.eye(3),
-        #         arm_idx=0
-        #     )
-
-        #     self.pregrasp_count = 0
-        #     self.get_logger().info("Computed pregrasp IK once")
-
-        # # every loop just send the _cached_ command
-        # self.sendRosCommand(self.pregrasp_jcmd)
-        # if self.pregrasp_count > 100:
-        #     # 300 * 0.01s == 3 seconds
-        #     self._transition_to(RobotState.GRASP)
-        # self.pregrasp_count += 1
 
     def _handle_grasp(self):
         if self.door_handle_pose is not None and self.grasp_pose is None:
@@ -377,26 +536,56 @@ class RealmanControlNode(Node):
         # Keep sending the same joint command as the previous state
         if self.pull_base_cmd is None:
             backward_speed = -0.2
-            self.pull_travel_time = 1.5 / abs(backward_speed)
-            self.pull_turn_time = 1.0
+            if backward_speed == 0.0:
+                self.pull_travel_time = 0.1
+            else:
+                self.pull_travel_time = 1.5 / abs(backward_speed)
+            self.pull_swing_time = 3.0
             # swing_time = 1
             self.pull_base_cmd = np.array([backward_speed, 0.0])
             self.state_start_time = self.get_clock().now()
+            self.rm_controller.update_pink_ik_configuration(self.rm_state.state)
+
+            # Initialize trajectory parameters
+            self.trajectory_start_time = None
             
 
         if self.pull_base_cmd is not None:
-            self.rm_controller.update_pink_ik_configuration(self.rm_state.state)
-            self.sendRosCommand(base_command=self.pull_base_cmd)
-        
+            # Swing the arm to the right to open the door
             if (self.get_clock().now() - self.state_start_time).nanoseconds > 100 * self.pull_travel_time * 10_000_000:
-                self.pull_base_cmd = np.array([0.0, 0])
+                if self.pull_swing_pose is None:
+                    r_hand = self.rm_controller.compute_frame_pose(self.rm_state.state, self.config.PIN_GIRPPER_FRAME_NAME[1])
+                    self.pull_swing_pose = r_hand.copy()
+                    self.pull_swing_pose.translation += r_hand.rotation @ np.array([-0.15, 0.0, -0.05])
+                    self.waypoints = create_waypoint_trajectory(
+                        r_hand,
+                        self.pull_swing_pose
+                    )
+                    self.trajectory_duration = self.pull_swing_time
+                    self.trajectory_start_time = self.get_clock().now()
+
+                elapsed_time = (self.get_clock().now() - self.trajectory_start_time).nanoseconds / 1e9
+                current_target_pose = generate_waypoint_trajectory(
+                    self.waypoints,
+                    self.trajectory_duration,
+                    elapsed_time
+                )
+                self.pull_swing_jcmd = self.rm_controller.pink_ik_incremental(self.rm_state.state,
+                                                            pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix(), 
+                                                            self.rm_state.state[0:3],
+                                                            None, None,
+                                                            current_target_pose.rotation, 
+                                                            current_target_pose.translation)
+                self.pull_swing_jcmd[14] = 1.0
+                self.pull_base_cmd = np.array([0.0, 0.0])
+                self.sendRosCommand(self.pull_swing_jcmd)
                 # self._transition_to(RobotState.HOLD_DOOR_LEFT)
             
-            if (self.get_clock().now() - self.state_start_time).nanoseconds > 100 * (self.pull_travel_time + self.pull_turn_time) * 10_000_000:
-                base_command = np.array([0.0, 0.0])
-                self.sendRosCommand(base_command=base_command)
+            if (self.get_clock().now() - self.state_start_time).nanoseconds > 100 * (self.pull_travel_time + self.pull_swing_time) * 10_000_000:
                 self._transition_to(RobotState.HOLD_DOOR_LEFT)
             
+            self.sendRosCommand(base_command=self.pull_base_cmd)
+
     def _handle_turn(self):
         if self.turn_jcmd is None:
             self.turn_jcmd = self.rm_controller.find_arm_inverse_kinematics(

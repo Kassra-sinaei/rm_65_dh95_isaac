@@ -72,8 +72,20 @@ class Controller:
             self.configuration.update(cur_q[7:])
 
     def pink_ik_incremental(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
-        # Update current configuration (The base keeps going down when using current configuration?)
-        # self.update_pink_ik_configuration(cur_q)
+        """Run pink ik solver in an incremental manner.
+        The desired poses are in the world frame. If the base is fixed, the desired poses are transformed
+        to the local base frame.
+        Args:
+            cur_q: current joint configuration
+            base_rot: base rotation
+            base_p: base position
+            l_goal_rot: left gripper rotation
+            l_goal_p: left gripper position
+            r_goal_rot: right gripper rotation
+            r_goal_p: right gripper position
+        Returns:
+            joint_command: joint command
+        """
         base_world = pinocchio.SE3(base_rot, base_p)
         if l_goal_rot is not None:
             l_goal_world = pinocchio.SE3(l_goal_rot, l_goal_p)
@@ -125,6 +137,47 @@ class Controller:
             
         joint_command = [self.configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
         # joint_command[-3] = 0.3  # platform joint
+        return joint_command
+
+    def pink_ik_incremental_local(self, cur_q,l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
+        """Run pink ik solver in an incremental manner.
+        The desired poses are in the local base frame.
+        Args:
+            cur_q: current joint configuration
+            l_goal_rot: left gripper rotation
+            l_goal_p: left gripper position
+            r_goal_rot: right gripper rotation
+            r_goal_p: right gripper position
+        Returns:
+            joint_command: joint command
+        """
+        # Don't allow running this function if the base is floating
+        if self.config.FLOATING_BASE:
+            raise ValueError("pink_ik_incremental_local is not supported for floating base")
+        
+        # Update tasks with current poses
+        if l_goal_rot is not None:
+            l_goal_local = pinocchio.SE3(l_goal_rot, l_goal_p)
+            self.tasks['l_gripper'].set_target(l_goal_local)
+        if r_goal_rot is not None:
+            r_goal_local = pinocchio.SE3(r_goal_rot, r_goal_p)
+            self.tasks['r_gripper'].set_target(r_goal_local)
+        
+        self.viewer["l_gripper_target"].set_transform(self.tasks['l_gripper'].transform_target_to_world.np)
+        self.viewer["l_gripper"].set_transform(
+            self.compute_frame_pose(cur_q, self.tasks["l_gripper"].frame, 
+            world_frame=self.config.FLOATING_BASE).np
+        )
+
+        self.viewer["r_gripper_target"].set_transform(self.tasks['r_gripper'].transform_target_to_world.np)
+        self.viewer["r_gripper"].set_transform(
+            self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame,
+            world_frame=self.config.FLOATING_BASE).np
+        )
+
+        velocity = solve_ik(self.configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
+        self.configuration.integrate_inplace(velocity, self.config.PIN_DT)
+        joint_command = [self.configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
         return joint_command
 
     def pink_ik(self, cur_q, base_rot, base_p, l_goal_rot, l_goal_p, r_goal_rot, r_goal_p):
