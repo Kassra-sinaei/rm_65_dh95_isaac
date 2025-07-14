@@ -85,7 +85,7 @@ class RealmanControlNode(Node):
         self.base_pub = self.create_publisher(
             Twist, '/isaac_sim/cmd_vel', 10
         )
-        self.active_arm_id = 1
+        self.active_arm_id = 0
         self.state_start_time = self.get_clock().now()
 
 
@@ -128,7 +128,8 @@ class RealmanControlNode(Node):
         elif self.state == RobotState.PULL:
             self._handle_pull()
         elif self.state == RobotState.CONTACTSWITCH:
-            self._switch_contact()
+            self._pull_base()
+            # self._switch_contact()
         elif self.state == RobotState.TRAVERSE:
             self._traverse()
 
@@ -149,10 +150,15 @@ class RealmanControlNode(Node):
             base_rot = np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0],
                                                 [np.sin(np.pi/2), np.cos(np.pi/2), 0],
                                                 [0, 0, 1]])
-            self.init_pose_command = self.rm_controller.pink_ik(self.rm_state.state, base_rot, np.array([0,0,0]),rot_r, np.array([0.2, -0.4, 0.5]), rot_l, np.array([0.2, 0.4,0.5]))
+            self.init_pose_command = self.rm_controller.pink_ik(
+                self.rm_state.state, 
+                base_rot, np.array([0,0,0]),
+                rot_r, np.array([0,0,0]) + self.config.IDLE_EE_RIGHT, 
+                rot_l, np.array([0,0,0]) + self.config.IDLE_EE_LEFT
+                )
         self.sendRosCommand(self.init_pose_command)
 
-        if (self.get_clock().now() - self.state_start_time).nanoseconds > 1000 * 10_000_000: # 10 seconds
+        if (self.get_clock().now() - self.state_start_time).nanoseconds > 800 * 10_000_000: # 6 seconds
             self._transition_to(RobotState.DETECT_HANDLE)
     
     def _approach_door(self):
@@ -167,11 +173,16 @@ class RealmanControlNode(Node):
             res_s = crocoddyl.ResidualModelState(state, goal, 2)
             cmodel.addCost("stateReg",
                         crocoddyl.CostModelResidual(state, res_s),
-                        weight=0.5)
+                        weight=1.0)
             res_u = crocoddyl.ResidualModelControl(state, 2)
-            cmodel.addCost("ctrlReg",
-                        crocoddyl.CostModelResidual(state, res_u),
-                        weight=5.0)
+            res_u_linear = crocoddyl.ResidualModelControl(state, np.array([1.0, 0.0]))
+            res_u_angular = crocoddyl.ResidualModelControl(state, np.array([0.0, 1.0]))
+            cmodel.addCost("ctrlLinear",
+                        crocoddyl.CostModelResidual(state, res_u_linear),
+                        weight=1.0)
+            cmodel.addCost("ctrlAngular",
+                        crocoddyl.CostModelResidual(state, res_u_angular),
+                        weight=0.1)  # 10x higher weight for angular
             self.rm_controller.base_model = ActionModelUnicycle(cmodel, self.config.BASE_DT)
             self.rm_controller.base_model.u_lb = np.array(self.config.U_BASE_MIN)
             self.rm_controller.base_model.u_ub = np.array(self.config.U_BASE_MAX)
@@ -186,7 +197,11 @@ class RealmanControlNode(Node):
         d = np.linalg.norm(error[0:2])
         print(f"Current Pose: {current_state.T}")
         if d > 0.15 or abs(error[2]) > 0.05:
-            base_command = self.rm_controller.compute_base_twist_pd(current_state, goal, T = 10)
+            base_command = self.rm_controller.compute_base_twist_pd(current_state, goal,)
+            # try:
+            #     base_command = self.rm_controller.compute_base_twist(current_state, d, T = 5)
+            # except:
+            #     base_command = self.rm_controller.compute_base_twist_pd(current_state, goal)
             if abs(base_command[0]) > self.config.U_BASE_MAX[0] or abs(base_command[1]) > self.config.U_BASE_MAX[1]:
                 self.get_logger().warn("Base command exceeds limits, saturating it to bounds")
                 base_command = np.clip(base_command, self.config.U_BASE_MIN, self.config.U_BASE_MAX)
@@ -208,70 +223,67 @@ class RealmanControlNode(Node):
             return
         if self.pregrasp_jcmd is None:
             self.pregrasp_count = 0
-            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
-                                                  [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
-                                                  [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
-            rot_idle = pin.Quaternion(np.eye(3))
+            rot_active = pin.Quaternion(np.array([[np.cos(np.pi/2), 0, np.sin(np.pi/2)], [0, 1, 0], [-np.sin(np.pi/2), 0, np.cos(np.pi/2)]]) @ 
+                                        np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
+            rot_idle = np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
+                                        [0,1,0],
+                                        [-np.sin(np.pi), 0.0, np.cos(np.pi)]])
+            base_q = pin.Quaternion(pin.Quaternion(self.rm_state.state[6],self.rm_state.state[3],self.rm_state.state[4],self.rm_state.state[5]).toRotationMatrix() @ np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
             self.pregrasp_jcmd = self.rm_controller.pink_ik(
                 self.rm_state.state,
-                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
+                base_q, self.rm_state.state[0:3],
                 rot_idle, self.rm_state.state[0:3] + self.config.IDLE_EE_RIGHT,
                 rot_active, self.grip_Handle_pose[:3] + self.config.HANDEL_PREGRIP_OFFSET,
             )
 
         # every loop just send the _cached_ command
         self.sendRosCommand(self.pregrasp_jcmd)
-        if self.pregrasp_count > 1000:  # 10 seconds``
+        if self.pregrasp_count > 800:  # 6 seconds
             self._transition_to(RobotState.GRASP)
         self.pregrasp_count += 1
 
     def _handle_grasp(self):
         # on first entry, compute and cache IK
         if self.grasp_jcmd is None:
-            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
-                                                  [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
-                                                  [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
-            rot_idle = pin.Quaternion(np.eye(3))
+            rot_active = pin.Quaternion(np.array([[np.cos(np.pi/2), 0, np.sin(np.pi/2)], [0, 1, 0], [-np.sin(np.pi/2), 0, np.cos(np.pi/2)]]) @ 
+                                        np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
+            rot_idle = np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
+                                        [0,1,0],
+                                        [-np.sin(np.pi), 0.0, np.cos(np.pi)]])
+            base_q = pin.Quaternion(pin.Quaternion(self.rm_state.state[6],self.rm_state.state[3],self.rm_state.state[4],self.rm_state.state[5]).toRotationMatrix() @ np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
             self.grasp_jcmd = self.rm_controller.pink_ik(
                 self.rm_state.state,
-                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
+                base_q, self.rm_state.state[0:3],
                 rot_idle, self.rm_state.state[0:3] + self.config.IDLE_EE_RIGHT,
                 rot_active, self.grip_Handle_pose[:3] + self.config.HANDEL_GRIP_OFFSET,
             )
             self.grasp_count = 0
 
-            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
-                                                    [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
-                                                    [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
-            rot_idle = pin.Quaternion(np.eye(3))
-            self.grasp_jcmd = self.rm_controller.pink_ik(
-                self.rm_state.state,
-                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
-                rot_active, self.grip_Handle_pose[:3] + self.config.HANDEL_GRIP_OFFSET,
-                rot_idle, self.rm_state.state[0:3] + self.config.IDLE_EE_LEFT,
-            )
             
 
         # every loop just send the _cached_ command
-        if self.grasp_count > 500:
+        if self.grasp_count > 300:
             if self.active_arm_id == 1:
                 self.grasp_jcmd[14] = 1.0
             else:
                 self.grasp_jcmd[13] = 1.0
-        if self.grasp_count > 1000:
+        if self.grasp_count > 500:
             self._transition_to(RobotState.PULL)
         self.sendRosCommand(self.grasp_jcmd)
         self.grasp_count += 1
     
     def _handle_pull(self):
         if self.pull_jcmd is None:
-            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
-                                                  [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
-                                                  [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
-            rot_idle = pin.Quaternion(np.eye(3))
+            self.pull_count = 0
+            rot_active = pin.Quaternion(np.array([[np.cos(np.pi/2), 0, np.sin(np.pi/2)], [0, 1, 0], [-np.sin(np.pi/2), 0, np.cos(np.pi/2)]]) @ 
+                                        np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
+            rot_idle = np.array([[np.cos(np.pi), 0.0, np.sin(np.pi)], 
+                                        [0,1,0],
+                                        [-np.sin(np.pi), 0.0, np.cos(np.pi)]])
+            base_q = pin.Quaternion(pin.Quaternion(self.rm_state.state[6],self.rm_state.state[3],self.rm_state.state[4],self.rm_state.state[5]).toRotationMatrix() @ np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
             self.pull_jcmd = self.rm_controller.pink_ik(
                 self.rm_state.state,
-                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
+                base_q, self.rm_state.state[0:3],
                 rot_idle, self.rm_state.state[0:3] + self.config.IDLE_EE_RIGHT,
                 rot_active, self.grip_Handle_pose[:3] + self.config.DOOR_PULL_OFFSET,
             )
@@ -282,11 +294,57 @@ class RealmanControlNode(Node):
             
 
         # every loop just send the _cached_ command
-        if self.pull_count > 1000:
+        if self.pull_count > 500:
             self._transition_to(RobotState.CONTACTSWITCH)
+            breakpoint()
         self.sendRosCommand(self.pull_jcmd)
         self.pull_count += 1
 
+    def _pull_base(self):
+        goal = np.array([self.rm_state.state[0], self.rm_state.state[1], self.config.PULL_TURN])
+        if self.rm_controller.base_model is None:
+            state = crocoddyl.StateVector(3)
+            cmodel = crocoddyl.CostModelSum(state, 2)
+            res_s = crocoddyl.ResidualModelState(state, goal, 2)
+            cmodel.addCost("stateReg",
+                        crocoddyl.CostModelResidual(state, res_s),
+                        weight=1.0)
+            res_u = crocoddyl.ResidualModelControl(state, 2)
+            res_u_linear = crocoddyl.ResidualModelControl(state, np.array([1.0, 0.0]))
+            res_u_angular = crocoddyl.ResidualModelControl(state, np.array([0.0, 1.0]))
+            cmodel.addCost("ctrlLinear",
+                        crocoddyl.CostModelResidual(state, res_u_linear),
+                        weight=1.0)
+            cmodel.addCost("ctrlAngular",
+                        crocoddyl.CostModelResidual(state, res_u_angular),
+                        weight=0.1)  # 10x higher weight for angular
+            self.rm_controller.base_model = ActionModelUnicycle(cmodel, self.config.BASE_DT)
+            self.rm_controller.base_model.u_lb = np.array(self.config.U_BASE_MIN)
+            self.rm_controller.base_model.u_ub = np.array(self.config.U_BASE_MAX)
+        
+        rotation_matrix = pin.Quaternion( self.rm_state.state[6], self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5]).toRotationMatrix() 
+        current_state = np.array([self.rm_state.state[0], self.rm_state.state[1],
+                                    np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])])
+        
+        error = goal - current_state
+        d = np.linalg.norm(error[0:2])
+        print(f"Current Pose: {current_state.T}")
+        if d > 0.15 or abs(error[2]) > 0.05:
+            base_command = self.rm_controller.compute_base_twist_pd(current_state, goal,)
+            # try:
+            #     base_command = self.rm_controller.compute_base_twist(current_state, d, T = 5)
+            # except:
+            #     base_command = self.rm_controller.compute_base_twist_pd(current_state, goal)
+            if abs(base_command[0]) > self.config.U_BASE_MAX[0] or abs(base_command[1]) > self.config.U_BASE_MAX[1]:
+                self.get_logger().warn("Base command exceeds limits, saturating it to bounds")
+                base_command = np.clip(base_command, self.config.U_BASE_MIN, self.config.U_BASE_MAX)
+            self.sendRosCommand(base_command=base_command)
+        else:
+            self._transition_to(RobotState.CONTACTSWITCH)
+            self.rm_controller.base_model = None
+            self.sendRosCommand(base_command=[0.0, 0.0])
+            self.grip_Handle_pose = None
+        
     def _switch_contact(self):
         if self.base_rotate_pose is None:
             heading = 0
@@ -295,13 +353,13 @@ class RealmanControlNode(Node):
         if self.switch_jcmd is None:
             self.switch_count = 0
         
-            rot_active = pin.Quaternion(np.array([[1, 0, 0], 
-                                                    [0, np.cos(np.pi/2), -np.sin(np.pi/2)],
-                                                    [0, np.sin(np.pi/2), np.cos(np.pi/2)]]))
+            rot_active = pin.Quaternion(np.array([[np.cos(np.pi/2), 0, np.sin(np.pi/2)], [0, 1, 0], [-np.sin(np.pi/2), 0, np.cos(np.pi/2)]]) @ 
+                                        np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
             rot_idle = pin.Quaternion(np.eye(3))
+            base_q = pin.Quaternion(pin.Quaternion(self.rm_state.state[6],self.rm_state.state[3],self.rm_state.state[4],self.rm_state.state[5]).toRotationMatrix() @ np.array([[np.cos(np.pi/2), -np.sin(np.pi/2), 0], [np.sin(np.pi/2), np.cos(np.pi/2), 0], [0, 0, 1]]))
             self.switch_jcmd = self.rm_controller.pink_ik(
                 self.rm_state.state,
-                pin.Quaternion(self.rm_state.state[3:7]), self.rm_state.state[0:3],
+                base_q, self.rm_state.state[0:3],
                 rot_active, self.grip_Handle_pose[:3] + self.config.HANDEL_GRIP_OFFSET,
                 rot_idle, self.rm_state.state[0:3] + self.config.IDLE_EE_LEFT,
             )

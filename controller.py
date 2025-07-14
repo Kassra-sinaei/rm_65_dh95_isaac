@@ -63,10 +63,16 @@ class Controller:
         self.viewer["r_gripper_target"].set_transform(self.tasks['r_gripper'].transform_target_to_world.np)
 
 
-        for t in np.arange(0.0, 10, self.config.PIN_DT):
+        for t in np.arange(0.0, 50, self.config.PIN_DT):
             velocity = solve_ik(configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")
             configuration.integrate_inplace(velocity, self.config.PIN_DT)
         joint_command = [configuration.q[i] for i in self.config.PIN_Q_TO_JCOMMAND]
+
+        pinocchio.forwardKinematics(self.model, self.data, configuration.q)
+        pinocchio.updateFramePlacements(self.model, self.data)
+        for task_name, task in self.tasks.items():
+            error = task.compute_error(configuration)
+            print(f"Task '{task_name}' error: {error}")
 
         return joint_command
       
@@ -130,28 +136,27 @@ class Controller:
         error =(x_g - x_i).reshape(3, 1)
         d = np.linalg.norm(error[:2])
         if d > 0.1:
-            return np.array([0.16 * d, -0.35 * (np.sin(x_i[2]) - error[1,0]/d)])
+            return np.array([0.2 * d, -0.5 * (np.sin(x_i[2]) - error[1,0]/d)])
         else:
-            return np.array([0.0, 1.0 * (error[2,0])])
+            return np.array([0.0, 1.5 * (error[2,0])])
     
     def compute_base_twist(self, x_s, d, T = 10):
         """
         Computes the base twist to move towards the desired position.
         """
-        if d > 0.1:
+        if d > 0.15:
             x_s.reshape(3, 1)
             T = int(T / self.config.BASE_DT)
             problem = crocoddyl.ShootingProblem(x_s, [ self.base_model ] * T, self.base_model)
             ddp = crocoddyl.SolverDDP(problem)
             us_init = [np.zeros(2) for _ in range(T)]
             xs_init = ddp.problem.rollout(us_init)
-            if ddp.solve(xs_init, us_init, maxiter=100):
+            if ddp.solve(xs_init, us_init, maxiter=25):
                 return ddp.us[0]
             else:
-                print("DDP solve failed: ")
-                return None
+                raise RuntimeError("DDP failed to solve the problem")
         else:
-            return np.array([0.0, -1.0 * (x_s[2])])
+            return np.array([0.0, -1.5 * (x_s[2])])
 
     def compute_frame_pose(self, q, frame_name):
         """
