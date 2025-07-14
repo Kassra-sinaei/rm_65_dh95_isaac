@@ -68,4 +68,9 @@ class Config:
           self.PIN_JACOB_JOINT_ID = [[3, 4, 5, 6, 7, 8], [9, 10, 11, 12, 13, 14]] # left and right arm
           self.PIN_Q_TO_JCOMMAND = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 1, 2]   # arm + platform + finger 2
         # Parameters for Pulling Door
-        self.PULL_BASE_OFFSET = np.array([0.0, -0.85, np.pi/4])
+        self.PULL_BASE_OFFSET = np.array([0.0, -0.85, 0.04])
+
+        # Mobile Base Controller Parameters
+        self.U_BASE_MIN = np.array([-1.0, -np.pi/2])
+        self.U_BASE_MAX = np.array([+1.0, +np.pi/2])
+        self.BASE_DT = 0.1

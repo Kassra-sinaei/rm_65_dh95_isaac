@@ -16,6 +16,9 @@ from realmanState import RealmanState
 from controller import Controller
 from enum import Enum, auto
 
+import crocoddyl
+from unicycle_test import ActionModelUnicycle, ActionDataUnicycle
+
 from utils.trajectory import create_waypoint_trajectory, generate_waypoint_trajectory, create_arc_trajectory, create_circular_trajectory
 
 class RobotState(Enum):
@@ -172,6 +175,48 @@ class RealmanControlNode(Node):
         if self.grip_Handle_pose is not None:
             self.get_logger().info("Handle detected")
             self._transition_to(RobotState.PREGRASP)
+
+    def _approach_door(self):
+        grip_pose = np.array([self.grip_Handle_pose[0], self.grip_Handle_pose[1], 
+                                0.0])
+        goal = grip_pose - self.config.PULL_BASE_OFFSET
+        print(f"Goal: {goal.T}")
+        if self.rm_controller.base_model is None:
+            
+            state = crocoddyl.StateVector(3)
+            cmodel = crocoddyl.CostModelSum(state, 2)
+            res_s = crocoddyl.ResidualModelState(state, goal, 2)
+            cmodel.addCost("stateReg",
+                        crocoddyl.CostModelResidual(state, res_s),
+                        weight=0.5)
+            res_u = crocoddyl.ResidualModelControl(state, 2)
+            cmodel.addCost("ctrlReg",
+                        crocoddyl.CostModelResidual(state, res_u),
+                        weight=5.0)
+            self.rm_controller.base_model = ActionModelUnicycle(cmodel, self.config.BASE_DT)
+            self.rm_controller.base_model.u_lb = np.array(self.config.U_BASE_MIN)
+            self.rm_controller.base_model.u_ub = np.array(self.config.U_BASE_MAX)
+        
+        rotation_matrix = pin.Quaternion( self.rm_state.state[6], self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5]).toRotationMatrix() 
+        goal_transform = pin.SE3(rotation_matrix, np.array([goal[0], goal[1], self.rm_state.state[2]]))
+        self.rm_controller.viz.viewer["base_goal"].set_transform(goal_transform.homogeneous)
+        current_state = np.array([self.rm_state.state[0], self.rm_state.state[1],
+                                    np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])])
+        
+        error = goal - current_state
+        d = np.linalg.norm(error[0:2])
+        print(f"Current Pose: {current_state.T}")
+        if d > 0.15 or abs(error[2]) > 0.05:
+            base_command = self.rm_controller.compute_base_twist_pd(current_state, goal, T = 10)
+            if abs(base_command[0]) > self.config.U_BASE_MAX[0] or abs(base_command[1]) > self.config.U_BASE_MAX[1]:
+                self.get_logger().warn("Base command exceeds limits, saturating it to bounds")
+                base_command = np.clip(base_command, self.config.U_BASE_MIN, self.config.U_BASE_MAX)
+            self.sendRosCommand(base_command=base_command)
+        else:
+            self._transition_to(RobotState.PREGRASP)
+            self.rm_controller.base_model = None
+            self.sendRosCommand(base_command=[0.0, 0.0])
+            self.grip_Handle_pose = None
 
     def _handle_pregrasp(self):
         if self.door_handle_pose is not None and self.pregrasp_pose is None:
