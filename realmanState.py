@@ -2,6 +2,7 @@ import numpy as np
 
 from sensor_msgs.msg import JointState
 from tf2_msgs.msg import TFMessage
+import pinocchio as pin
 class RealmanState:
     def __init__(self, config):
         # state buffers x, y, z, rx, ry, rz, rw, platform, head 2, l 6, r 6. Order is made to match the pinocchio model
@@ -24,7 +25,11 @@ class RealmanState:
     def update_base_pose(self, tf_msg):
         for tf in tf_msg.transforms:
             t, r = tf.transform.translation, tf.transform.rotation
+            # r = pin.Quaternion(r.w, r.x, r.y, r.z)
+            # rot = pin.Quaternion(r.toRotationMatrix() @ np.array([[np.cos(-np.pi/2), -np.sin(-np.pi/2), 0], [np.sin(-np.pi/2), np.cos(-np.pi/2), 0], [0, 0, 1]]))
+
             self.state[:7] = np.array([
-                t.x, t.y, t.z,
+                 -t.y, t.x, t.z,
+                # rot.x, rot.y, rot.z, rot.w
                 r.x, r.y, r.z, r.w
             ])

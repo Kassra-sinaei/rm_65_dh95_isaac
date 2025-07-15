@@ -24,6 +24,7 @@ from utils.trajectory import create_waypoint_trajectory, generate_waypoint_traje
 class RobotState(Enum):
     INIT_POSE    = auto()
     DETECT_HANDLE = auto()
+    APPROACH     = auto()
     PREGRASP     = auto()
     GRASP        = auto()
     PULL         = auto()
@@ -135,6 +136,8 @@ class RealmanControlNode(Node):
             self._handle_init_pose()
         # elif self.state == RobotState.DETECT_HANDLE:
         #     self._handle_detect_handle()
+        elif self.state == RobotState.APPROACH:
+            self._approach_door()
         elif self.state == RobotState.PREGRASP:
             self._handle_pregrasp()
         elif self.state == RobotState.GRASP:
@@ -169,7 +172,7 @@ class RealmanControlNode(Node):
         if (self.get_clock().now() - self.state_start_time).nanoseconds > 500 * 10_000_000:
             # 300 * 0.01s == 3 seconds
             # self._transition_to(RobotState.IKTEST)
-            self._transition_to(RobotState.PREGRASP)
+            self._transition_to(RobotState.APPROACH)
 
     def _handle_detect_handle(self):
         if self.grip_Handle_pose is not None:
@@ -177,8 +180,7 @@ class RealmanControlNode(Node):
             self._transition_to(RobotState.PREGRASP)
 
     def _approach_door(self):
-        grip_pose = np.array([self.grip_Handle_pose[0], self.grip_Handle_pose[1], 
-                                0.0])
+        grip_pose = np.array([-self.door_handle_pose[1], self.door_handle_pose[0], 0.0])
         goal = grip_pose - self.config.PULL_BASE_OFFSET
         print(f"Goal: {goal.T}")
         if self.rm_controller.base_model is None:

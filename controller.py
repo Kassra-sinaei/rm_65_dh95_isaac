@@ -50,6 +50,7 @@ class Controller:
         meshcat_shapes.frame(self.viewer["r_gripper"], opacity=1.0)
         meshcat_shapes.frame(self.viewer["base_target"], opacity=0.5)
         meshcat_shapes.frame(self.viewer["base"], opacity=1.0)
+        meshcat_shapes.frame(self.viewer["base_goal"], opacity=1.0)
         
         print(f"model: {self.model}")
 
@@ -286,9 +287,9 @@ class Controller:
         error =(x_g - x_i).reshape(3, 1)
         d = np.linalg.norm(error[:2])
         if d > 0.1:
-            return np.array([0.16 * d, -0.35 * (np.sin(x_i[2]) - error[1,0]/d)])
+            return np.array([0.2 * d, -0.5 * (np.sin(x_i[2]) - error[1,0]/d)])
         else:
-            return np.array([0.0, 1.0 * (error[2,0])])
+            return np.array([0.0, 1.5 * (error[2,0])])
     
     def compute_base_twist(self, x_s, d, T = 10):
         """
