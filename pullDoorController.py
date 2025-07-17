@@ -190,11 +190,16 @@ class RealmanControlNode(Node):
             res_s = crocoddyl.ResidualModelState(state, goal, 2)
             cmodel.addCost("stateReg",
                         crocoddyl.CostModelResidual(state, res_s),
-                        weight=0.5)
+                        weight=2.0)
             res_u = crocoddyl.ResidualModelControl(state, 2)
-            cmodel.addCost("ctrlReg",
-                        crocoddyl.CostModelResidual(state, res_u),
-                        weight=5.0)
+            res_u_linear = crocoddyl.ResidualModelControl(state, np.array([1.0, 0.0]))
+            res_u_angular = crocoddyl.ResidualModelControl(state, np.array([0.0, 1.0]))
+            cmodel.addCost("ctrlLinear",
+                        crocoddyl.CostModelResidual(state, res_u_linear),
+                        weight=1.0)
+            cmodel.addCost("ctrlAngular",
+                        crocoddyl.CostModelResidual(state, res_u_angular),
+                        weight=10)  # 10x higher weight for angular
             self.rm_controller.base_model = ActionModelUnicycle(cmodel, self.config.BASE_DT)
             self.rm_controller.base_model.u_lb = np.array(self.config.U_BASE_MIN)
             self.rm_controller.base_model.u_ub = np.array(self.config.U_BASE_MAX)
@@ -209,7 +214,11 @@ class RealmanControlNode(Node):
         d = np.linalg.norm(error[0:2])
         print(f"Current Pose: {current_state.T}")
         if d > 0.15 or abs(error[2]) > 0.05:
-            base_command = self.rm_controller.compute_base_twist_pd(current_state, goal, T = 10)
+            # base_command = self.rm_controller.compute_base_twist_pd(current_state, goal,)
+            try:
+                base_command = self.rm_controller.compute_base_twist(current_state, d, T = 20)
+            except:
+                base_command = self.rm_controller.compute_base_twist_pd(current_state, goal)
             if abs(base_command[0]) > self.config.U_BASE_MAX[0] or abs(base_command[1]) > self.config.U_BASE_MAX[1]:
                 self.get_logger().warn("Base command exceeds limits, saturating it to bounds")
                 base_command = np.clip(base_command, self.config.U_BASE_MIN, self.config.U_BASE_MAX)
@@ -218,7 +227,7 @@ class RealmanControlNode(Node):
             self._transition_to(RobotState.PREGRASP)
             self.rm_controller.base_model = None
             self.sendRosCommand(base_command=[0.0, 0.0])
-            self.grip_Handle_pose = None
+            self.door_handle_pose = None
 
     def _handle_pregrasp(self):
         if self.door_handle_pose is not None and self.pregrasp_pose is None:

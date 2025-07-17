@@ -55,11 +55,7 @@ class Controller:
         print(f"model: {self.model}")
 
         # Crocoddyl MPC
-        self.base_model = crocoddyl.ActionModelUnicycle()
-        self.base_model.dt = 0.01
-        self.base_model.costWeights = np.matrix([5, 1]).T
-        self.base_model.stateWeights = np.matrix([1, 1, 10]).T
-        self.base_data  = self.base_model.createData()
+        self.base_model = None
 
         # Pink setup
         self.configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
@@ -295,20 +291,19 @@ class Controller:
         """
         Computes the base twist to move towards the desired position.
         """
-        if d > 0.1:
+        if d > 0.15:
             x_s.reshape(3, 1)
             T = int(T / self.config.BASE_DT)
             problem = crocoddyl.ShootingProblem(x_s, [ self.base_model ] * T, self.base_model)
             ddp = crocoddyl.SolverDDP(problem)
             us_init = [np.zeros(2) for _ in range(T)]
             xs_init = ddp.problem.rollout(us_init)
-            if ddp.solve(xs_init, us_init, maxiter=100):
+            if ddp.solve(xs_init, us_init, maxiter=25):
                 return ddp.us[0]
             else:
-                print("DDP solve failed: ")
-                return None
+                raise RuntimeError("DDP failed to solve the problem")
         else:
-            return np.array([0.0, -1.0 * (x_s[2])])
+            return np.array([0.0, -1.5 * (x_s[2])])
 
     def compute_frame_pose(self, q, frame_name, world_frame = True):
         """
