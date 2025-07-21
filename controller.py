@@ -7,7 +7,7 @@ from pink.tasks import FrameTask
 from pink import solve_ik, Configuration
 import meshcat_shapes
 
-
+from uni_mpc import MPCController
 
 class Controller:
     def __init__(self, config):
@@ -55,7 +55,11 @@ class Controller:
         print(f"model: {self.model}")
 
         # Crocoddyl MPC
-        self.base_model = None
+        self.base_controller = MPCController(
+            horizon = 50, dt = self.config.BASE_DT,
+            Q = self.config.Q, R = self.config.R, Qf = self.config.Qf,
+            v_max = self.config.v_max, omega_max = self.config.omega_max
+        )
 
         # Pink setup
         self.configuration = Configuration(self.model, self.data, np.array(pinocchio.neutral(self.model)))
@@ -127,6 +131,7 @@ class Controller:
             self.compute_frame_pose(cur_q, self.tasks["r_gripper"].frame,
             world_frame=self.config.FLOATING_BASE).np
         )
+        self.viewer["base_target"].set_transform(self.tasks['base'].transform_target_to_world.np)
 
 
         velocity = solve_ik(self.configuration, self.tasks.values(), self.config.PIN_DT, solver="quadprog")

@@ -75,3 +75,9 @@ class Config:
         self.U_BASE_MAX = np.array([+1.0, +np.pi/3])
         self.BASE_DT = 0.01
         self.PULL_TURN = np.pi/4
+
+        self.Q = np.diag([25.0, 25.0, 0.1])
+        self.R = np.diag([1.0, 0.1])
+        self.Qf = np.diag([50.0, 50.0, 0.2])
+        self.v_max = 1.0
+        self.omega_max = 1.0

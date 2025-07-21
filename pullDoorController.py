@@ -17,7 +17,6 @@ from controller import Controller
 from enum import Enum, auto
 
 import crocoddyl
-from unicycle_test import ActionModelUnicycle, ActionDataUnicycle
 
 from utils.trajectory import create_waypoint_trajectory, generate_waypoint_trajectory, create_arc_trajectory, create_circular_trajectory
 
@@ -44,8 +43,11 @@ class RealmanControlNode(Node):
     def __init__(self):
         super().__init__('PullDoorController')
 
+        # Set true if the door is not aligned with simulation frames
+        self.rotated_door = True
+
         self.config = Config()
-        self.rm_state = RealmanState(self.config)
+        self.rm_state = RealmanState(self.config, self.rotated_door)
         self.rm_controller = Controller(self.config)
 
         self.door_handle_pose = np.zeros(7)  # [x, y, z, rx, ry, rz, rw]
@@ -61,6 +63,7 @@ class RealmanControlNode(Node):
         self.push_base_cmd = None
         self.grip_Handle_pose = None
         self.first_entry = True
+        self.base_traj = None
 
         # subscriptions
         self.create_subscription(
@@ -111,12 +114,21 @@ class RealmanControlNode(Node):
 
     def doorHandleCallback(self, msg):
         for t in msg.transforms:
-            trans = t.transform.translation
-            rot   = t.transform.rotation
-            self.door_handle_pose = np.array([
-                trans.x, trans.y, trans.z,
-                rot.x, rot.y, rot.z, rot.w
-            ])
+            if self.rotated_door:
+                trans = t.transform.translation
+                rot   = t.transform.rotation
+                self.door_handle_pose = np.array([
+                    -trans.y, trans.x, trans.z,
+                    rot.x, rot.y, rot.z, rot.w
+                ])
+            else:
+                trans = t.transform.translation
+                rot   = t.transform.rotation
+                self.door_handle_pose = np.array([
+                    trans.x, trans.y, trans.z,
+                    rot.x, rot.y, rot.z, rot.w
+                ])
+            
     def gripHandleCallback(self, msg):
         pose_in_camera = np.array([msg.x, msg.y, msg.z])
         # convert to world frame
@@ -160,10 +172,10 @@ class RealmanControlNode(Node):
         #     self._handle_opening()
         
         # visualize 
-        if self.config.FLOATING_BASE:
-            self.rm_controller.viz.display(self.rm_state.state)
-        else:
-            self.rm_controller.viz.display(self.rm_state.state[7:])
+        # if self.config.FLOATING_BASE:
+        #     self.rm_controller.viz.display(self.rm_state.state)
+        # else:
+        #     self.rm_controller.viz.display(self.rm_state.state[7:])
     
     def _handle_init_pose(self):
         # keep sending init-pose until 200 ticks have elapsed
@@ -180,60 +192,36 @@ class RealmanControlNode(Node):
             self._transition_to(RobotState.PREGRASP)
 
     def _approach_door(self):
-        grip_pose = np.array([-self.door_handle_pose[1], self.door_handle_pose[0], 0.0])
+        grip_pose = np.array([self.door_handle_pose[0], self.door_handle_pose[1], 0.0])
         goal = grip_pose - self.config.PULL_BASE_OFFSET
-        print(f"Goal: {goal.T}")
-        if self.rm_controller.base_model is None:
-            
-            state = crocoddyl.StateVector(3)
-            cmodel = crocoddyl.CostModelSum(state, 2)
-            res_s = crocoddyl.ResidualModelState(state, goal, 2)
-            cmodel.addCost("stateReg",
-                        crocoddyl.CostModelResidual(state, res_s),
-                        weight=2.0)
-            res_u = crocoddyl.ResidualModelControl(state, 2)
-            res_u_linear = crocoddyl.ResidualModelControl(state, np.array([1.0, 0.0]))
-            res_u_angular = crocoddyl.ResidualModelControl(state, np.array([0.0, 1.0]))
-            cmodel.addCost("ctrlLinear",
-                        crocoddyl.CostModelResidual(state, res_u_linear),
-                        weight=1.0)
-            cmodel.addCost("ctrlAngular",
-                        crocoddyl.CostModelResidual(state, res_u_angular),
-                        weight=10)  # 10x higher weight for angular
-            self.rm_controller.base_model = ActionModelUnicycle(cmodel, self.config.BASE_DT)
-            self.rm_controller.base_model.u_lb = np.array(self.config.U_BASE_MIN)
-            self.rm_controller.base_model.u_ub = np.array(self.config.U_BASE_MAX)
-        
+        goal = np.array([-1, 0, 0])
         rotation_matrix = pin.Quaternion( self.rm_state.state[6], self.rm_state.state[3], self.rm_state.state[4], self.rm_state.state[5]).toRotationMatrix() 
         goal_transform = pin.SE3(rotation_matrix, np.array([goal[0], goal[1], self.rm_state.state[2]]))
-        self.rm_controller.viz.viewer["base_goal"].set_transform(goal_transform.homogeneous)
+        # self.rm_controller.viz.viewer["base_goal"].set_transform(goal_transform.homogeneous)
         current_state = np.array([self.rm_state.state[0], self.rm_state.state[1],
                                     np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])])
-        
-        error = goal - current_state
-        d = np.linalg.norm(error[0:2])
-        print(f"Current Pose: {current_state.T}")
-        if d > 0.15 or abs(error[2]) > 0.05:
-            # base_command = self.rm_controller.compute_base_twist_pd(current_state, goal,)
-            try:
-                base_command = self.rm_controller.compute_base_twist(current_state, d, T = 20)
-            except:
-                base_command = self.rm_controller.compute_base_twist_pd(current_state, goal)
-            if abs(base_command[0]) > self.config.U_BASE_MAX[0] or abs(base_command[1]) > self.config.U_BASE_MAX[1]:
-                self.get_logger().warn("Base command exceeds limits, saturating it to bounds")
-                base_command = np.clip(base_command, self.config.U_BASE_MIN, self.config.U_BASE_MAX)
-            self.sendRosCommand(base_command=base_command)
+        if self.base_traj is None:
+            # self.reference_traj = self.rm_controller.base_controller.generate_reference_trajectory(current_state, goal)
+            self.reference_traj = goal * np.ones((self.rm_controller.base_controller.N + 1, 3))
+            # self.rm_controller.base_controller.plot_ref(goal, current_state, self.reference_traj)
+
+        if np.linalg.norm((goal - current_state)[0:2]) > 0.1 or (goal[2] -current_state[2]) > 0.05:
+            control_input, success = self.rm_controller.base_controller.control(current_state, self.reference_traj)
+            print(f"Current Pose: {current_state.T}, goal: {goal.T}")
+            print(f"Control Input: {control_input.T}")
+            self.sendRosCommand(base_command=control_input)
         else:
-            self._transition_to(RobotState.PREGRASP)
-            self.rm_controller.base_model = None
             self.sendRosCommand(base_command=[0.0, 0.0])
-            self.door_handle_pose = None
+            self._transition_to(RobotState.PREGRASP)
+            breakpoint()
 
     def _handle_pregrasp(self):
         if self.door_handle_pose is not None and self.pregrasp_pose is None:
             base_world_rot = pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix()
+            if self.rotated_door:
+                base_world_rot = base_world_rot @ np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
             # Rotate along x for 90 degrees and then 180 degrees along z
-            door_handle_rot = base_world_rot @ self.config.HANDLE_PREGRASP_ROTATION_OFFSET
+            door_handle_rot = base_world_rot @ self.config.HANDLE_PREGRASP_ROTATION_OFFSET 
             door_handle_pose_des = pin.SE3(door_handle_rot, self.door_handle_pose[:3])
             # Transform the handle pose to the local frame with the offset
             base_pose_world = pin.SE3(base_world_rot, self.rm_state.state[0:3])
@@ -249,6 +237,7 @@ class RealmanControlNode(Node):
         if self.pregrasp_pose is not None:
             self.pregrasp_jcmd = self.rm_controller.pink_ik_incremental(self.rm_state.state,
                                                             pin.Quaternion(self.rm_state.state[3:7]).normalized().toRotationMatrix(), 
+                                                            #np.array([self.rm_state.state[1], -self.rm_state.state[0], self.rm_state.state[2]]),
                                                             self.rm_state.state[0:3],
                                                             self.initial_l_hand_pose.rotation, 
                                                             self.initial_l_hand_pose.translation,
@@ -257,6 +246,7 @@ class RealmanControlNode(Node):
             self.sendRosCommand(self.pregrasp_jcmd)
             if (self.get_clock().now() - self.state_start_time).nanoseconds > 300 * 10_000_000:
                 self._transition_to(RobotState.GRASP)
+                breakpoint()
 
     def _handle_grasp(self):
         if self.door_handle_pose is not None and self.grasp_pose is None:
